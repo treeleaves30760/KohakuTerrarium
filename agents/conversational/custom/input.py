@@ -10,7 +10,7 @@ import sys
 from typing import AsyncIterator
 
 from kohakuterrarium.core.events import TriggerEvent, create_user_input_event
-from kohakuterrarium.modules.input.asr import ASRConfig, ASRModule, ASRResult
+from kohakuterrarium.builtins.inputs.asr import ASRConfig, ASRModule, ASRResult
 
 
 class ConsoleASR(ASRModule):

@@ -17,21 +17,21 @@ controller:
 system_prompt_file: system.md
 
 # Input module - Real-time Whisper ASR with VAD
-# Requires: pip install RealtimeSTT
+# Requires: pip install -e ".[asr]" and FFmpeg (choco install ffmpeg)
 input:
   type: whisper
-  # Whisper model: tiny, base, small, medium, large-v2
-  model: base
-  # Device: cuda or cpu
+  # Whisper model: tiny, base, small, medium, large, large-v3
+  model: small
+  # Device: cuda or cpu (cuda uses fp16 for speed)
   device: cuda
   # Language: auto, en, ja, etc.
   language: auto
-  # VAD sensitivity (0.0-1.0)
-  silero_sensitivity: 0.6
-  # WebRTC VAD sensitivity (0-3)
-  webrtc_sensitivity: 3
-  # Silence duration to end utterance (seconds)
-  post_speech_silence: 0.5
+  # Silero VAD threshold (0.0-1.0)
+  vad_threshold: 0.5
+  # Minimum silence to end utterance (ms)
+  min_silence_ms: 500
+  # Minimum speech duration to process (ms)
+  min_speech_ms: 250
 
 # Output configuration
 output:

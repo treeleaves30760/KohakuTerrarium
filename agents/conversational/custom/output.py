@@ -9,7 +9,7 @@ import asyncio
 import sys
 from typing import AsyncIterator
 
-from kohakuterrarium.modules.output.tts import AudioChunk, TTSConfig, TTSModule
+from kohakuterrarium.builtins.outputs.tts import AudioChunk, TTSConfig, TTSModule
 
 
 class StreamingTTS(TTSModule):
