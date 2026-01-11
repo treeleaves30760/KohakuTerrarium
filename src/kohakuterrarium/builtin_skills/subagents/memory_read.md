@@ -24,31 +24,42 @@ Sub-agent for searching and retrieving information from the memory folder.
 
 ## HOW TO USE
 
-```xml
-<agent type="memory_read">what to find</agent>
+```
+[/memory_read]
+what to find
+[memory_read/]
 ```
 
 ## Arguments
 
 | Arg | Type | Description |
 |-----|------|-------------|
-| type | attribute | Must be "memory_read" |
 | body | content | What information to retrieve |
 
 ## Examples
 
-```xml
-<!-- Find character definition -->
-<agent type="memory_read">Get my character definition</agent>
+```
+[/memory_read]
+Get my character definition
+[memory_read/]
+```
 
-<!-- Recall user preferences -->
-<agent type="memory_read">What are the user's preferences?</agent>
+```
+[/memory_read]
+What are the user's preferences?
+[memory_read/]
+```
 
-<!-- Find specific fact -->
-<agent type="memory_read">What do I know about the project structure?</agent>
+```
+[/memory_read]
+What do I know about the project structure?
+[memory_read/]
+```
 
-<!-- Get conversation context -->
-<agent type="memory_read">Recent conversation topics</agent>
+```
+[/memory_read]
+Recent conversation topics
+[memory_read/]
 ```
 
 ## CAPABILITIES

@@ -41,3 +41,61 @@ def get_builtin_subagent_doc(name: str) -> str | None:
     if doc_path.exists():
         return doc_path.read_text(encoding="utf-8")
     return None
+
+
+def list_builtin_tool_docs() -> list[str]:
+    """List all builtin tool names that have documentation."""
+    tools_dir = BUILTIN_SKILLS_DIR / "tools"
+    if not tools_dir.exists():
+        return []
+    return [p.stem for p in tools_dir.glob("*.md")]
+
+
+def list_builtin_subagent_docs() -> list[str]:
+    """List all builtin subagent names that have documentation."""
+    subagents_dir = BUILTIN_SKILLS_DIR / "subagents"
+    if not subagents_dir.exists():
+        return []
+    return [p.stem for p in subagents_dir.glob("*.md")]
+
+
+def get_all_tool_docs(tool_names: list[str] | None = None) -> dict[str, str]:
+    """
+    Get documentation for multiple tools.
+
+    Args:
+        tool_names: List of tool names, or None for all builtin tools
+
+    Returns:
+        Dict of tool_name -> documentation
+    """
+    if tool_names is None:
+        tool_names = list_builtin_tool_docs()
+
+    docs = {}
+    for name in tool_names:
+        doc = get_builtin_tool_doc(name)
+        if doc:
+            docs[name] = doc
+    return docs
+
+
+def get_all_subagent_docs(subagent_names: list[str] | None = None) -> dict[str, str]:
+    """
+    Get documentation for multiple subagents.
+
+    Args:
+        subagent_names: List of subagent names, or None for all builtin
+
+    Returns:
+        Dict of subagent_name -> documentation
+    """
+    if subagent_names is None:
+        subagent_names = list_builtin_subagent_docs()
+
+    docs = {}
+    for name in subagent_names:
+        doc = get_builtin_subagent_doc(name)
+        if doc:
+            docs[name] = doc
+    return docs

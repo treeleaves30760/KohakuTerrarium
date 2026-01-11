@@ -18,8 +18,10 @@ Execute shell commands and return output.
 
 ## HOW TO USE
 
-```xml
-<bash>command here</bash>
+```
+[/bash]
+command here
+[bash/]
 ```
 
 ## Arguments
@@ -30,22 +32,30 @@ Execute shell commands and return output.
 
 ## Examples
 
-```xml
-<!-- List files -->
-<bash>ls -la</bash>
+```
+[/bash]
+ls -la
+[bash/]
+```
 
-<!-- Git status -->
-<bash>git status</bash>
+```
+[/bash]
+git status
+[bash/]
+```
 
-<!-- Run tests -->
-<bash>pytest tests/ -v</bash>
+```
+[/bash]
+pytest tests/ -v
+[bash/]
+```
 
-<!-- Multi-line script -->
-<bash>
+```
+[/bash]
 cd /tmp
 ls -la
 pwd
-</bash>
+[bash/]
 ```
 
 ## Output Format

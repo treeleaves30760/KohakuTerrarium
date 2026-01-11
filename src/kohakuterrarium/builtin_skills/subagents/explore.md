@@ -24,31 +24,42 @@ Autonomous sub-agent for codebase exploration and analysis.
 
 ## HOW TO USE
 
-```xml
-<agent type="explore">task description</agent>
+```
+[/explore]
+task description
+[explore/]
 ```
 
 ## Arguments
 
 | Arg | Type | Description |
 |-----|------|-------------|
-| type | attribute | Must be "explore" |
 | body | content | Task description (what to find/understand) |
 
 ## Examples
 
-```xml
-<!-- Find related code -->
-<agent type="explore">Find all files related to authentication</agent>
+```
+[/explore]
+Find all files related to authentication
+[explore/]
+```
 
-<!-- Understand architecture -->
-<agent type="explore">How does the config loading system work?</agent>
+```
+[/explore]
+How does the config loading system work?
+[explore/]
+```
 
-<!-- Locate specific patterns -->
-<agent type="explore">Find where user permissions are checked</agent>
+```
+[/explore]
+Find where user permissions are checked
+[explore/]
+```
 
-<!-- Analyze dependencies -->
-<agent type="explore">What modules import the database module?</agent>
+```
+[/explore]
+What modules import the database module?
+[explore/]
 ```
 
 ## CAPABILITIES

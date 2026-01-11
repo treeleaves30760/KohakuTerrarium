@@ -18,20 +18,21 @@ Apply unified diff patches to modify files precisely.
 
 ## HOW TO USE
 
-```xml
-<edit path="file_path">
+```
+[/edit]
+@@path=file_path
 @@ -start,count +start,count @@
 -removed line
 +added line
  context line
-</edit>
+[edit/]
 ```
 
 ## Arguments
 
 | Arg | Type | Description |
 |-----|------|-------------|
-| `path` | attribute | Path to file (required) |
+| path | @@arg | Path to file (required) |
 | content | body | Unified diff content |
 
 ## Diff Format
@@ -52,41 +53,45 @@ Standard unified diff format:
 
 ### Replace a function
 
-```xml
-<edit path="src/main.py">
+```
+[/edit]
+@@path=src/main.py
 @@ -5,3 +5,3 @@
 -def hello():
 -    print("Hi")
 +def hello():
 +    print("Hello, World!")
-</edit>
+[edit/]
 ```
 
 ### Add import after existing import
 
-```xml
-<edit path="src/utils.py">
+```
+[/edit]
+@@path=src/utils.py
 @@ -1,1 +1,2 @@
  import os
 +import sys
-</edit>
+[edit/]
 ```
 
 ### Delete lines
 
-```xml
-<edit path="src/old.py">
+```
+[/edit]
+@@path=src/old.py
 @@ -10,3 +10,1 @@
  # Keep this comment
 -# Delete this
 -# And this
-</edit>
+[edit/]
 ```
 
 ### Multiple changes in one diff
 
-```xml
-<edit path="src/app.py">
+```
+[/edit]
+@@path=src/app.py
 @@ -1,2 +1,3 @@
  import os
 +import json
@@ -94,7 +99,7 @@ Standard unified diff format:
 @@ -20,2 +21,2 @@
 -    return None
 +    return {}
-</edit>
+[edit/]
 ```
 
 ## Output Format
@@ -107,7 +112,7 @@ Edited /path/to/file.py
 
 ## TIPS
 
-- Use `<read path="file.py"/>` first to see exact line numbers
+- Use `[/read]@@path=file.py[read/]` first to see exact line numbers
 - Include context lines (` ` prefix) to anchor changes
 - Line numbers in `@@` header are 1-indexed
 - Multiple hunks can be in one diff

@@ -17,38 +17,41 @@ Write content to a file. Creates if doesn't exist, overwrites if it does.
 
 ## HOW TO USE
 
-```xml
-<write path="file_path">
+```
+[/write]
+@@path=file_path
 content here
-</write>
+[write/]
 ```
 
 ## Arguments
 
 | Arg | Type | Description |
 |-----|------|-------------|
-| path | attribute | Path to file (required) |
+| path | @@arg | Path to file (required) |
 | content | body | Content to write |
 
 ## Examples
 
-```xml
-<!-- Create Python file -->
-<write path="src/hello.py">
+```
+[/write]
+@@path=src/hello.py
 def hello():
     print("Hello, World!")
 
 if __name__ == "__main__":
     hello()
-</write>
+[write/]
+```
 
-<!-- Create config -->
-<write path="config.json">
+```
+[/write]
+@@path=config.json
 {
   "name": "my-app",
   "version": "1.0.0"
 }
-</write>
+[write/]
 ```
 
 ## Output Format

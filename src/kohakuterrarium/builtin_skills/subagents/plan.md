@@ -24,31 +24,42 @@ Sub-agent for creating implementation plans and design decisions.
 
 ## HOW TO USE
 
-```xml
-<agent type="plan">task description</agent>
+```
+[/plan]
+task description
+[plan/]
 ```
 
 ## Arguments
 
 | Arg | Type | Description |
 |-----|------|-------------|
-| type | attribute | Must be "plan" |
 | body | content | What needs to be planned/designed |
 
 ## Examples
 
-```xml
-<!-- Feature planning -->
-<agent type="plan">Plan implementation for user authentication with JWT</agent>
+```
+[/plan]
+Plan implementation for user authentication with JWT
+[plan/]
+```
 
-<!-- Refactoring strategy -->
-<agent type="plan">Plan refactoring the database layer to use async</agent>
+```
+[/plan]
+Plan refactoring the database layer to use async
+[plan/]
+```
 
-<!-- Architecture decision -->
-<agent type="plan">Design the caching strategy for API responses</agent>
+```
+[/plan]
+Design the caching strategy for API responses
+[plan/]
+```
 
-<!-- Migration planning -->
-<agent type="plan">Plan migration from REST to GraphQL</agent>
+```
+[/plan]
+Plan migration from REST to GraphQL
+[plan/]
 ```
 
 ## CAPABILITIES

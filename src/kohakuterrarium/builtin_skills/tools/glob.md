@@ -17,11 +17,20 @@ Find files matching a glob pattern.
 
 ## HOW TO USE
 
-```xml
-<glob>pattern</glob>
+```
+[/glob]
+pattern
+[glob/]
+```
 
-<!-- Or with optional parameters -->
-<glob path="base_dir" limit="50">pattern</glob>
+Or with optional parameters:
+
+```
+[/glob]
+@@path=base_dir
+@@limit=50
+pattern
+[glob/]
 ```
 
 ## Arguments
@@ -29,8 +38,8 @@ Find files matching a glob pattern.
 | Arg | Type | Description |
 |-----|------|-------------|
 | pattern | body | Glob pattern (required) |
-| path | attribute | Base directory (default: cwd) |
-| limit | attribute | Max results (default: 100) |
+| path | @@arg | Base directory (default: cwd) |
+| limit | @@arg | Max results (default: 100) |
 
 ## Pattern Syntax
 
@@ -43,18 +52,31 @@ Find files matching a glob pattern.
 
 ## Examples
 
-```xml
-<!-- All Python files -->
-<glob>**/*.py</glob>
+```
+[/glob]
+**/*.py
+[glob/]
+```
 
-<!-- Files in specific dir -->
-<glob path="src/components">*.ts</glob>
+```
+[/glob]
+@@path=src/components
+*.ts
+[glob/]
+```
 
-<!-- Config files -->
-<glob>**/*.{json,yaml,toml}</glob>
+```
+[/glob]
+**/*.{json,yaml,toml}
+[glob/]
+```
 
-<!-- With limit -->
-<glob path="." limit="50">**/*.md</glob>
+```
+[/glob]
+@@path=.
+@@limit=50
+**/*.md
+[glob/]
 ```
 
 ## Output Format

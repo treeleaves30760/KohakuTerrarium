@@ -18,35 +18,44 @@ Read file contents with optional line range.
 
 ## HOW TO USE
 
-```xml
-<read path="file_path"/>
+```
+[/read]
+@@path=file_path
+[read/]
+```
 
-<!-- Or with optional parameters -->
-<read path="file_path" offset="10" limit="20"/>
+Or with optional parameters:
 
-<!-- Alternative: path as content -->
-<read>file_path</read>
+```
+[/read]
+@@path=file_path
+@@offset=10
+@@limit=20
+[read/]
 ```
 
 ## Arguments
 
 | Arg | Type | Description |
 |-----|------|-------------|
-| path | attribute/content | Path to file (required) |
-| offset | attribute | Starting line (0-based, default: 0) |
-| limit | attribute | Max lines to read (default: all) |
+| path | @@arg | Path to file (required) |
+| offset | @@arg | Starting line (0-based, default: 0) |
+| limit | @@arg | Max lines to read (default: all) |
 
 ## Examples
 
-```xml
-<!-- Read entire file -->
-<read path="src/main.py"/>
+```
+[/read]
+@@path=src/main.py
+[read/]
+```
 
-<!-- Read lines 10-30 -->
-<read path="src/main.py" offset="10" limit="20"/>
-
-<!-- Alternative format -->
-<read>src/main.py</read>
+```
+[/read]
+@@path=src/main.py
+@@offset=10
+@@limit=20
+[read/]
 ```
 
 ## Output Format

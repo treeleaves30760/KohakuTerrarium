@@ -24,31 +24,42 @@ Sub-agent for storing and updating information in the memory folder.
 
 ## HOW TO USE
 
-```xml
-<agent type="memory_write">what to store</agent>
+```
+[/memory_write]
+what to store
+[memory_write/]
 ```
 
 ## Arguments
 
 | Arg | Type | Description |
 |-----|------|-------------|
-| type | attribute | Must be "memory_write" |
 | body | content | What information to store and where |
 
 ## Examples
 
-```xml
-<!-- Store a fact -->
-<agent type="memory_write">Remember that the user prefers dark mode</agent>
+```
+[/memory_write]
+Remember that the user prefers dark mode
+[memory_write/]
+```
 
-<!-- Update context -->
-<agent type="memory_write">Update context with current project: KohakuTerrarium</agent>
+```
+[/memory_write]
+Update context with current project: KohakuTerrarium
+[memory_write/]
+```
 
-<!-- Record preference -->
-<agent type="memory_write">Save preference: user likes concise responses</agent>
+```
+[/memory_write]
+Save preference: user likes concise responses
+[memory_write/]
+```
 
-<!-- Store conversation insight -->
-<agent type="memory_write">Add to facts: user is working on an agent framework</agent>
+```
+[/memory_write]
+Add to facts: user is working on an agent framework
+[memory_write/]
 ```
 
 ## CAPABILITIES

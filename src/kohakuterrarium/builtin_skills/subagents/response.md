@@ -24,28 +24,36 @@ Output sub-agent for generating user-facing responses.
 
 ## HOW TO USE
 
-```xml
-<agent type="response">what to communicate</agent>
+```
+[/response]
+what to communicate
+[response/]
 ```
 
 ## Arguments
 
 | Arg | Type | Description |
 |-----|------|-------------|
-| type | attribute | Must be "response" |
 | body | content | What to communicate to the user |
 
 ## Examples
 
-```xml
-<!-- Generate explanation -->
-<agent type="response">Explain how the authentication system works</agent>
+```
+[/response]
+Explain how the authentication system works
+[response/]
+```
 
-<!-- Format complex output -->
-<agent type="response">Present the analysis results in a clear format</agent>
+```
+[/response]
+Present the analysis results in a clear format
+[response/]
+```
 
-<!-- In-character response -->
-<agent type="response">Greet the user as the character</agent>
+```
+[/response]
+Greet the user as the character
+[response/]
 ```
 
 ## OUTPUT ROUTING

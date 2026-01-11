@@ -18,11 +18,22 @@ Search file contents for a pattern using regex.
 
 ## HOW TO USE
 
-```xml
-<grep>pattern</grep>
+```
+[/grep]
+pattern
+[grep/]
+```
 
-<!-- With optional parameters -->
-<grep path="src/" glob="**/*.py" limit="50" ignore_case="true">pattern</grep>
+With optional parameters:
+
+```
+[/grep]
+@@path=src/
+@@glob=**/*.py
+@@limit=50
+@@ignore_case=true
+pattern
+[grep/]
 ```
 
 ## Arguments
@@ -30,25 +41,40 @@ Search file contents for a pattern using regex.
 | Arg | Type | Description |
 |-----|------|-------------|
 | pattern | body | Regex pattern to search (required) |
-| path | attribute | Directory to search (default: cwd) |
-| glob | attribute | File pattern filter (default: `**/*`) |
-| limit | attribute | Max matches (default: 50) |
-| ignore_case | attribute | Case-insensitive (default: false) |
+| path | @@arg | Directory to search (default: cwd) |
+| glob | @@arg | File pattern filter (default: `**/*`) |
+| limit | @@arg | Max matches (default: 50) |
+| ignore_case | @@arg | Case-insensitive (default: false) |
 
 ## Examples
 
-```xml
-<!-- Find function definitions -->
-<grep glob="**/*.py">def \w+\(</grep>
+```
+[/grep]
+@@glob=**/*.py
+def \w+\(
+[grep/]
+```
 
-<!-- Case-insensitive search -->
-<grep ignore_case="true">todo|fixme</grep>
+```
+[/grep]
+@@ignore_case=true
+todo|fixme
+[grep/]
+```
 
-<!-- Search specific directory -->
-<grep path="src/components" glob="*.tsx">import.*react</grep>
+```
+[/grep]
+@@path=src/components
+@@glob=*.tsx
+import.*react
+[grep/]
+```
 
-<!-- Search in single file -->
-<grep path="src/main.py">import</grep>
+```
+[/grep]
+@@path=src/main.py
+import
+[grep/]
 ```
 
 ## Output Format
