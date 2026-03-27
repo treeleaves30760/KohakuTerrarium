@@ -158,6 +158,9 @@ class AgentConfig:
     # Path to agent folder
     agent_path: Path | None = None
 
+    # Session key for shared state isolation (None = use agent name)
+    session_key: str | None = None
+
     def get_api_key(self) -> str | None:
         """Get API key from environment."""
         return os.environ.get(self.api_key_env)
@@ -409,6 +412,7 @@ def load_agent_config(agent_path: str | Path) -> AgentConfig:
         termination=config_data.get("termination"),
         max_subagent_depth=config_data.get("max_subagent_depth", 3),
         agent_path=agent_path,
+        session_key=config_data.get("session_key"),
     )
 
     # Load system prompt from file if specified
