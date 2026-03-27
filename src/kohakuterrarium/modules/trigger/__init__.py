@@ -23,6 +23,7 @@ Usage:
 """
 
 from kohakuterrarium.modules.trigger.base import BaseTrigger, TriggerModule
+from kohakuterrarium.modules.trigger.channel import ChannelTrigger
 from kohakuterrarium.modules.trigger.context import ContextUpdateTrigger
 from kohakuterrarium.modules.trigger.timer import TimerTrigger
 
@@ -31,6 +32,7 @@ __all__ = [
     "TriggerModule",
     "BaseTrigger",
     # Implementations
-    "TimerTrigger",
+    "ChannelTrigger",
     "ContextUpdateTrigger",
+    "TimerTrigger",
 ]

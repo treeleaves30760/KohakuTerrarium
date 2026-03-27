@@ -14,7 +14,6 @@ Exports:
 - Registry: Module registration
 """
 
-from kohakuterrarium.core.agent import Agent, run_agent
 from kohakuterrarium.core.config import (
     AgentConfig,
     InputConfig,
@@ -94,3 +93,14 @@ __all__ = [
     "ModuleLoadError",
     "load_custom_module",
 ]
+
+
+def __getattr__(name: str):
+    """Lazy imports for modules that would cause circular import chains."""
+    if name in ("Agent", "run_agent"):
+        from kohakuterrarium.core.agent import Agent, run_agent
+
+        globals()["Agent"] = Agent
+        globals()["run_agent"] = run_agent
+        return Agent if name == "Agent" else run_agent
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

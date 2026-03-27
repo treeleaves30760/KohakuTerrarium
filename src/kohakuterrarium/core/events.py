@@ -136,6 +136,7 @@ class EventType:
     CONTEXT_UPDATE = "context_update"
     TOOL_COMPLETE = "tool_complete"
     SUBAGENT_OUTPUT = "subagent_output"
+    CHANNEL_MESSAGE = "channel_message"
     MONITOR = "monitor"
     ERROR = "error"
     STARTUP = "startup"

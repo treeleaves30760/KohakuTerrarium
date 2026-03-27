@@ -32,6 +32,7 @@ from kohakuterrarium.modules.output.base import OutputModule
 from kohakuterrarium.modules.output.router import OutputRouter
 from kohakuterrarium.modules.trigger import (
     BaseTrigger,
+    ChannelTrigger,
     ContextUpdateTrigger,
     TimerTrigger,
 )
@@ -406,9 +407,11 @@ class AgentInitMixin:
                 )
 
             case "channel":
-                # Placeholder - will be replaced by Phase 4 (ChannelTrigger)
-                logger.warning("Channel trigger not yet implemented")
-                return None
+                return ChannelTrigger(
+                    channel_name=trigger_config.options.get("channel", ""),
+                    prompt=trigger_config.prompt,
+                    filter_sender=trigger_config.options.get("filter_sender"),
+                )
 
             case "custom" | "package":
                 if not trigger_config.module or not trigger_config.class_name:
