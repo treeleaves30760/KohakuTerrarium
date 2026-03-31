@@ -183,8 +183,10 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
         await self.output_router.start()
         await self.trigger_manager.start_all()
 
-        # Wire executor completion callback -> _process_event
+        # Wire completion callbacks -> _process_event
+        # Background tools and sub-agents deliver results as trigger events
         self.executor._on_complete = self._on_bg_complete
+        self.subagent_manager._on_complete = self._on_bg_complete
 
         self._running = True
         self._shutdown_event.clear()

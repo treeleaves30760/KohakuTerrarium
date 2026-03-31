@@ -9,6 +9,7 @@ import asyncio
 from pathlib import Path
 from typing import Any, Callable
 
+from kohakuterrarium.core.events import create_tool_complete_event
 from kohakuterrarium.core.job import (
     JobResult,
     JobState,
@@ -82,6 +83,9 @@ class SubAgentManager:
         self._current_depth: int = current_depth
         self._max_depth: int = max_depth
         self._tool_format: str | None = tool_format
+
+        # Completion callback (wired by agent to deliver results as events)
+        self._on_complete: Callable[[Any], None] | None = None
 
         # Registered sub-agent configs
         self._configs: dict[str, SubAgentConfig] = {}
@@ -299,6 +303,15 @@ class SubAgentManager:
                 turns=result.turns,
             )
 
+            # Fire completion callback to deliver result as event
+            if self._on_complete:
+                event = create_tool_complete_event(
+                    job_id=job_id,
+                    content=result.output or "",
+                    error=result.error,
+                )
+                self._on_complete(event)
+
             return result
 
         except Exception as e:
@@ -316,6 +329,15 @@ class SubAgentManager:
                 state=JobState.ERROR,
                 error=str(e),
             )
+
+            # Fire completion callback even on error
+            if self._on_complete:
+                event = create_tool_complete_event(
+                    job_id=job_id,
+                    content="",
+                    error=str(e),
+                )
+                self._on_complete(event)
 
             return result
 
