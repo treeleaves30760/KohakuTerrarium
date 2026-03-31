@@ -333,11 +333,6 @@ class AgentHandlersMixin:
                 logger.debug("Pushing feedback to controller, continuing")
                 await controller.push_event(feedback_event)
 
-        # Flush any remaining buffered output before ending
-        await self.output_router.flush()
-        if hasattr(self.output_router.default_output, "reset"):
-            self.output_router.default_output.reset()
-
         # Notify output modules that processing has ended
         await self.output_router.on_processing_end()
 
@@ -420,23 +415,25 @@ class AgentHandlersMixin:
 
         for job_id, result in zip(job_ids, results_list):
             tool_name = job_id.rsplit("_", 1)[0] if "_" in job_id else job_id
+            short_id = job_id.rsplit("_", 1)[-1][:6] if "_" in job_id else ""
+            label = f"{tool_name}[{short_id}]" if short_id else tool_name
             tool_call_id = tool_call_ids.get(job_id, job_id)
 
             if isinstance(result, Exception):
                 content = f"Error: {result}"
                 self.output_router.default_output.on_activity(
-                    "tool_error", f"[{tool_name}] FAILED: {result}"
+                    "tool_error", f"[{label}] FAILED: {result}"
                 )
             elif result is not None and result.error:
                 content = f"Error: {result.error}"
                 self.output_router.default_output.on_activity(
-                    "tool_error", f"[{tool_name}] ERROR: {result.error}"
+                    "tool_error", f"[{label}] ERROR: {result.error}"
                 )
             elif result is not None:
                 content = result.output if result.output else ""
                 status = "OK" if result.exit_code == 0 else f"exit={result.exit_code}"
                 self.output_router.default_output.on_activity(
-                    "tool_done", f"[{tool_name}] {status}"
+                    "tool_done", f"[{label}] {status}"
                 )
             else:
                 content = ""
@@ -476,15 +473,15 @@ class AgentHandlersMixin:
         # Format results
         result_strs: list[str] = []
         for job_id, result in zip(job_ids, results_list):
-            # Extract tool name: everything before the last underscore
-            # job_id format is "{tool_name}_{uuid}", tool names may contain underscores
             tool_name = job_id.rsplit("_", 1)[0] if "_" in job_id else job_id
+            short_id = job_id.rsplit("_", 1)[-1][:6] if "_" in job_id else ""
+            label = f"{tool_name}[{short_id}]" if short_id else tool_name
 
             if isinstance(result, Exception):
                 result_strs.append(f"## {job_id} - FAILED\n{str(result)}")
                 logger.info("Tool %s: failed", tool_name)
                 self.output_router.default_output.on_activity(
-                    "tool_error", f"[{tool_name}] FAILED: {result}"
+                    "tool_error", f"[{label}] FAILED: {result}"
                 )
             elif result is not None:
                 output = result.output if result.output else ""
@@ -492,7 +489,7 @@ class AgentHandlersMixin:
                     result_strs.append(f"## {job_id} - ERROR\n{result.error}\n{output}")
                     logger.info("Tool %s: error", tool_name)
                     self.output_router.default_output.on_activity(
-                        "tool_error", f"[{tool_name}] ERROR: {result.error}"
+                        "tool_error", f"[{label}] ERROR: {result.error}"
                     )
                 else:
                     status = (
@@ -501,7 +498,7 @@ class AgentHandlersMixin:
                     result_strs.append(f"## {job_id} - {status}\n{output}")
                     logger.info("Tool %s: done", tool_name)
                     self.output_router.default_output.on_activity(
-                        "tool_done", f"[{tool_name}] {status}"
+                        "tool_done", f"[{label}] {status}"
                     )
 
         return "\n\n".join(result_strs) if result_strs else ""
@@ -550,25 +547,35 @@ class AgentHandlersMixin:
     def _on_bg_complete(self, event: TriggerEvent) -> None:
         """Callback fired by executor when a background job completes.
 
-        Shows completion in TUI, then creates a new asyncio task to
-        process the result through _process_event (same path as triggers).
-        The processing lock ensures serialization with any ongoing LLM turn.
+        Shows completion in TUI, then processes the result and flushes
+        output. The processing lock ensures serialization.
         """
         if not self._running:
             return
 
-        # Show tool completion in TUI
+        # Show tool completion in TUI with job_id
         job_id = getattr(event, "job_id", "")
         tool_name = job_id.rsplit("_", 1)[0] if "_" in job_id else job_id
+        short_id = job_id.rsplit("_", 1)[-1][:6] if "_" in job_id else ""
+        label = f"{tool_name}[{short_id}]" if short_id else tool_name
+
         error = event.context.get("error") if event.context else None
         if error:
             self.output_router.default_output.on_activity(
-                "tool_error", f"[{tool_name}] ERROR: {error}"
+                "tool_error", f"[{label}] ERROR: {error}"
             )
         else:
             self.output_router.default_output.on_activity(
-                "tool_done", f"[{tool_name}] DONE"
+                "tool_done", f"[{label}] DONE"
             )
 
         logger.info("Background job completed", job_id=job_id)
-        asyncio.create_task(self._process_event(event))
+        asyncio.create_task(self._process_and_flush_bg(event))
+
+    async def _process_and_flush_bg(self, event: TriggerEvent) -> None:
+        """Process a background completion event and flush TUI output."""
+        await self._process_event(event)
+        # Flush buffered output so TUI displays immediately
+        await self.output_router.flush()
+        if hasattr(self.output_router.default_output, "reset"):
+            self.output_router.default_output.reset()
