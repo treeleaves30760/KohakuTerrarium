@@ -172,11 +172,16 @@ class AgentHandlersMixin:
 
                     job_id, task, is_direct = await self._start_tool_async(parse_event)
 
-                    # Model decides: run_in_background=True -> background
-                    if run_bg:
+                    # Three-level decision:
+                    # 1. Tool declares BACKGROUND mode -> always background (forced)
+                    # 2. Model passes run_in_background=True -> background (opt-in)
+                    # 3. Otherwise -> direct (default)
+                    if not is_direct:
+                        pass  # Tool itself declared BACKGROUND, respect it
+                    elif run_bg:
                         is_direct = False
                     else:
-                        is_direct = True  # default: direct (model expects result)
+                        is_direct = True
 
                     if tool_call_id:
                         native_tool_call_ids[job_id] = tool_call_id

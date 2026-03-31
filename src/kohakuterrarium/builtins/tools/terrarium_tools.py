@@ -13,7 +13,7 @@ from typing import Any
 from uuid import uuid4
 
 from kohakuterrarium.builtins.tools.registry import register_builtin
-from kohakuterrarium.core.channel import ChannelMessage
+from kohakuterrarium.core.channel import AgentChannel, ChannelMessage
 from kohakuterrarium.modules.tool.base import (
     BaseTool,
     ExecutionMode,
@@ -312,7 +312,13 @@ class TerrariumSendTool(BaseTool):
 
 @register_builtin("terrarium_observe")
 class TerrariumObserveTool(BaseTool):
-    """Read recent messages from a terrarium channel."""
+    """Wait for the next message on a terrarium channel (background-only).
+
+    This tool ALWAYS runs in background. It subscribes to a channel and
+    waits for the next message. The result is delivered as a new event
+    when a message arrives. The agent can continue working or wait for
+    user input while this runs.
+    """
 
     needs_context = True
 
@@ -322,11 +328,14 @@ class TerrariumObserveTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Read recent messages from a channel in a terrarium"
+        return (
+            "Watch a terrarium channel for the next message (runs in background, "
+            "result delivered when message arrives)"
+        )
 
     @property
     def execution_mode(self) -> ExecutionMode:
-        return ExecutionMode.DIRECT
+        return ExecutionMode.BACKGROUND  # Forced background - never blocks agent
 
     def get_parameters_schema(self) -> dict:
         return {
@@ -338,11 +347,11 @@ class TerrariumObserveTool(BaseTool):
                 },
                 "channel": {
                     "type": "string",
-                    "description": "Channel name to read from",
+                    "description": "Channel name to watch",
                 },
-                "limit": {
-                    "type": "integer",
-                    "description": "Max messages to read (default 10)",
+                "timeout": {
+                    "type": "number",
+                    "description": "Seconds to wait before giving up (default 300)",
                 },
             },
             "required": ["terrarium_id", "channel"],
@@ -355,7 +364,7 @@ class TerrariumObserveTool(BaseTool):
 
         terrarium_id = args.get("terrarium_id", "").strip()
         channel_name = args.get("channel", "").strip()
-        limit = int(args.get("limit", 10))
+        timeout = float(args.get("timeout", 300))
 
         if not terrarium_id or not channel_name:
             return ToolResult(error="terrarium_id and channel are required")
@@ -370,31 +379,33 @@ class TerrariumObserveTool(BaseTool):
                     error=f"Channel '{channel_name}' not found. Available: {ch_names}"
                 )
 
-            # Read from channel history
-            if hasattr(ch, "history"):
-                messages = ch.history[-limit:]
-            elif hasattr(ch, "_history"):
-                messages = ch._history[-limit:]
+            # Subscribe and wait for next message
+            if isinstance(ch, AgentChannel):
+                sub_id = f"root_observe_{channel_name}"
+                subscription = ch.subscribe(sub_id)
+                try:
+                    msg = await asyncio.wait_for(
+                        subscription.receive(), timeout=timeout
+                    )
+                finally:
+                    subscription.unsubscribe()
             else:
-                return ToolResult(
-                    output=f"Channel [{channel_name}] has no readable history.",
-                    exit_code=0,
-                )
+                # Queue channel - receive next message
+                msg = await asyncio.wait_for(ch.receive(), timeout=timeout)
 
-            if not messages:
-                return ToolResult(
-                    output=f"No messages in [{channel_name}].",
-                    exit_code=0,
-                )
+            sender = getattr(msg, "sender", "?")
+            content = getattr(msg, "content", str(msg))
+            return ToolResult(
+                output=f"[{channel_name}] {sender}: {content}",
+                exit_code=0,
+                metadata={"channel": channel_name, "sender": sender},
+            )
 
-            lines = [f"Recent messages in [{channel_name}] ({len(messages)}/{limit}):"]
-            for msg in messages:
-                sender = getattr(msg, "sender", "?")
-                content = getattr(msg, "content", str(msg))
-                preview = content[:200] + "..." if len(content) > 200 else content
-                lines.append(f"  [{sender}]: {preview}")
-
-            return ToolResult(output="\n".join(lines), exit_code=0)
+        except asyncio.TimeoutError:
+            return ToolResult(
+                output=f"No messages on [{channel_name}] after {timeout}s.",
+                exit_code=0,
+            )
         except KeyError as e:
             return ToolResult(error=str(e))
 
