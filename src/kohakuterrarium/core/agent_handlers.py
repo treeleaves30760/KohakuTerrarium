@@ -550,11 +550,25 @@ class AgentHandlersMixin:
     def _on_bg_complete(self, event: TriggerEvent) -> None:
         """Callback fired by executor when a background job completes.
 
-        Creates a new asyncio task to process the result through
-        _process_event, same path as triggers. The processing lock
-        ensures serialization with any ongoing LLM turn.
+        Shows completion in TUI, then creates a new asyncio task to
+        process the result through _process_event (same path as triggers).
+        The processing lock ensures serialization with any ongoing LLM turn.
         """
         if not self._running:
             return
-        logger.info("Background job completed", event_type=event.type)
+
+        # Show tool completion in TUI
+        job_id = getattr(event, "job_id", "")
+        tool_name = job_id.rsplit("_", 1)[0] if "_" in job_id else job_id
+        error = event.context.get("error") if event.context else None
+        if error:
+            self.output_router.default_output.on_activity(
+                "tool_error", f"[{tool_name}] ERROR: {error}"
+            )
+        else:
+            self.output_router.default_output.on_activity(
+                "tool_done", f"[{tool_name}] DONE"
+            )
+
+        logger.info("Background job completed", job_id=job_id)
         asyncio.create_task(self._process_event(event))

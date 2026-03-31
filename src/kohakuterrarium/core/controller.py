@@ -316,14 +316,10 @@ class Controller:
                     text_parts.append(event.content)
             elif event.type == "tool_complete":
                 content_text = event.get_text_content()
-                text_parts.append(
-                    f"[Tool {event.job_id} completed]\n{content_text[:500]}"
-                )
+                text_parts.append(f"[Tool {event.job_id} completed]\n{content_text}")
             elif event.type == "subagent_output":
                 content_text = event.get_text_content()
-                text_parts.append(
-                    f"[Sub-agent {event.job_id} output]\n{content_text[:500]}"
-                )
+                text_parts.append(f"[Sub-agent {event.job_id} output]\n{content_text}")
             else:
                 content_text = event.get_text_content()
                 text_parts.append(f"[{event.type}] {content_text}")
