@@ -102,6 +102,9 @@ class OpenAIProvider(BaseLLMProvider):
         # httpx client for async requests
         self._client: httpx.AsyncClient | None = None
 
+        # Token usage from last completion (streaming or non-streaming)
+        self._last_usage: dict[str, int] = {}
+
         logger.debug(
             "OpenAIProvider initialized",
             model=model,
@@ -270,6 +273,11 @@ class OpenAIProvider(BaseLLMProvider):
 
                             try:
                                 chunk = json.loads(data)
+
+                                # Capture usage from final chunk (many providers include it)
+                                if "usage" in chunk and chunk["usage"]:
+                                    self._last_usage = chunk["usage"]
+
                                 choices = chunk.get("choices", [])
                                 if choices:
                                     delta = choices[0].get("delta", {})
@@ -448,6 +456,7 @@ class OpenAIProvider(BaseLLMProvider):
                         tools=[tc.name for tc in self._last_tool_calls],
                     )
 
+                self._last_usage = usage
                 logger.debug(
                     "Request completed",
                     tokens_in=usage.get("prompt_tokens"),

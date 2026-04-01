@@ -367,6 +367,15 @@ class AgentHandlersMixin:
         if hasattr(self.output_router.default_output, "reset"):
             self.output_router.default_output.reset()
 
+        # Emit token usage from this processing cycle
+        usage = getattr(controller, "_last_usage", {})
+        if usage:
+            self.output_router.notify_activity(
+                "token_usage",
+                f"tokens: {usage.get('prompt_tokens', 0)} in, {usage.get('completion_tokens', 0)} out",
+                metadata=usage,
+            )
+
         # Check if this was a channel-triggered event and whether we sent
         # to any channel. If not, notify the output that the creature
         # processed a channel message without sending to any channel.

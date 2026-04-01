@@ -225,6 +225,15 @@ class BaseLLMProvider:
         """Tool calls from the last streaming response (native mode only)."""
         return self._last_tool_calls
 
+    @property
+    def last_usage(self) -> dict[str, int]:
+        """Token usage from the last completion call.
+
+        Returns dict with prompt_tokens, completion_tokens, total_tokens
+        (keys depend on provider). Empty dict if not available.
+        """
+        return getattr(self, "_last_usage", {})
+
     def _normalize_messages(
         self,
         messages: list[Message] | list[dict[str, Any]],

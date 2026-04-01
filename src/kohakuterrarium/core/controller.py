@@ -160,6 +160,9 @@ class Controller:
         )
         self.conversation = Conversation(conv_config)
 
+        # Token usage tracking
+        self._last_usage: dict[str, int] = {}
+
         # Event queue
         self._event_queue: asyncio.Queue[TriggerEvent] = asyncio.Queue()
         self._pending_events: list[TriggerEvent] = []
@@ -408,6 +411,17 @@ class Controller:
                 if chunk:
                     yield TextEvent(text=chunk)
 
+            # Log token usage from this completion
+            usage = self.llm.last_usage if hasattr(self.llm, "last_usage") else {}
+            if usage:
+                self._last_usage = usage
+                logger.info(
+                    "Token usage",
+                    prompt_tokens=usage.get("prompt_tokens", 0),
+                    completion_tokens=usage.get("completion_tokens", 0),
+                    total_tokens=usage.get("total_tokens", 0),
+                )
+
             # Extract native tool calls and build proper assistant message
             native_calls = (
                 self.llm.last_tool_calls if hasattr(self.llm, "last_tool_calls") else []
@@ -505,6 +519,18 @@ class Controller:
                         )
                 else:
                     yield event
+
+        # Log token usage for custom format mode
+        if not self._is_native_mode:
+            usage = self.llm.last_usage if hasattr(self.llm, "last_usage") else {}
+            if usage:
+                self._last_usage = usage
+                logger.info(
+                    "Token usage",
+                    prompt_tokens=usage.get("prompt_tokens", 0),
+                    completion_tokens=usage.get("completion_tokens", 0),
+                    total_tokens=usage.get("total_tokens", 0),
+                )
 
         # Add assistant message to conversation (custom format only;
         # native mode already appended above with tool_calls metadata)
