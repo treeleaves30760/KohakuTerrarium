@@ -350,6 +350,11 @@ class OutputRouter:
         for output in self.named_outputs.values():
             await output.flush()
 
+    async def on_user_input(self, text: str) -> None:
+        """Notify default output that user input was received."""
+        if hasattr(self.default_output, "on_user_input"):
+            await self.default_output.on_user_input(text)
+
     async def on_resume(self, events: list[dict]) -> None:
         """Replay session history to user-facing outputs.
 

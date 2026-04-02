@@ -41,6 +41,23 @@ class InlineOutput(BaseOutputModule):
             self._end_turn()
         logger.debug("Inline output stopped")
 
+    async def on_user_input(self, text: str) -> None:
+        """Render user input as a panel (overwrites the raw prompt line)."""
+        if not text:
+            return
+        # Move cursor up to overwrite the prompt line that prompt_toolkit wrote
+        sys.stdout.write("\033[A\033[2K")
+        sys.stdout.flush()
+        self._console.print(
+            Panel(
+                text,
+                title="[bold cyan]You[/]",
+                title_align="left",
+                border_style="cyan",
+                padding=(0, 1),
+            )
+        )
+
     async def on_processing_start(self) -> None:
         self._text_buffer.clear()
 
@@ -133,11 +150,20 @@ class InlineOutput(BaseOutputModule):
 
 
 def _parse_detail(detail: str) -> tuple[str, str]:
-    """Extract [name] prefix from detail string."""
+    """Extract [name] prefix from detail string.
+
+    Detail format: "[tool_name[job_id]] arg_preview" or "[tool_name] rest".
+    Strips the [job_id] suffix to get a clean tool name.
+    """
     if detail.startswith("["):
         try:
             end = detail.index("]", 1)
-            return detail[1:end], detail[end + 2 :]
+            raw_name = detail[1:end]
+            rest = detail[end + 2 :]
+            # Strip job_id suffix: "info[9b4270" -> "info"
+            if "[" in raw_name:
+                raw_name = raw_name[: raw_name.index("[")]
+            return raw_name, rest
         except (ValueError, IndexError):
             pass
     return "unknown", detail

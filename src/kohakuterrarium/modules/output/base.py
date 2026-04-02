@@ -66,6 +66,14 @@ class OutputModule(Protocol):
         """
         ...
 
+    async def on_user_input(self, text: str) -> None:
+        """Called when user input is received, before processing starts.
+
+        Output modules can render the user's message (e.g. as a panel).
+        Default is no-op.
+        """
+        ...
+
     async def on_resume(self, events: list[dict]) -> None:
         """Called during session resume with historical events.
 
@@ -139,6 +147,10 @@ class BaseOutputModule(ABC):
 
     def on_activity(self, activity_type: str, detail: str) -> None:
         """Called when tool/subagent activity occurs. Default is no-op."""
+        pass
+
+    async def on_user_input(self, text: str) -> None:
+        """Called when user input is received. Default is no-op."""
         pass
 
     async def on_resume(self, events: list[dict]) -> None:

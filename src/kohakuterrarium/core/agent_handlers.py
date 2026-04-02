@@ -78,6 +78,15 @@ class AgentHandlersMixin:
                 self.config.name, "user_input", {"content": content}
             )
 
+        # Notify output of user input (for inline panel rendering)
+        if event.type == "user_input" and hasattr(self, "output_router"):
+            content = (
+                event.get_text_content()
+                if hasattr(event, "is_multimodal") and event.is_multimodal()
+                else (event.content or "")
+            )
+            await self.output_router.on_user_input(content)
+
         async with self._processing_lock:
             if not self._running:
                 logger.debug("Dropping event, agent stopped", event_type=event.type)
