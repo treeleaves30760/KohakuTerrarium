@@ -88,16 +88,18 @@ class SentenceTransformerEmbedder(BaseEmbedder):
             )
 
         logger.info("Loading SentenceTransformer", model=model_name)
+        # Jina v5 requires default_task; other models ignore it
         self._model = SentenceTransformer(
-            model_name, device=device, trust_remote_code=True
+            model_name,
+            device=device,
+            trust_remote_code=True,
+            model_kwargs={"default_task": "retrieval"},
         )
-        # Use Matryoshka truncation if dimensions specified
         self._truncate_dim = dimensions
-        # Some models (jina v5) return None from get_sentence_embedding_dimension;
-        # detect from a dummy encode in that case
+        # Detect dimensions (some models return None from the accessor)
         auto_dim = self._model.get_sentence_embedding_dimension()
         if auto_dim is None:
-            probe = self._model.encode(["test"], normalize_embeddings=True)
+            probe = self._model.encode(["test"])
             auto_dim = probe.shape[1]
         self.dimensions = dimensions or auto_dim
         logger.info(
@@ -107,11 +109,9 @@ class SentenceTransformerEmbedder(BaseEmbedder):
         )
 
     def encode(self, texts: list[str]) -> np.ndarray:
-        kwargs: dict[str, Any] = {"normalize_embeddings": True}
-        vecs = self._model.encode(texts, **kwargs)
+        vecs = self._model.encode(texts, normalize_embeddings=True)
         if self._truncate_dim and vecs.shape[1] > self._truncate_dim:
             vecs = vecs[:, : self._truncate_dim]
-            # Re-normalize after truncation
             norms = np.linalg.norm(vecs, axis=1, keepdims=True)
             norms[norms == 0] = 1
             vecs = vecs / norms
