@@ -32,7 +32,7 @@
         <div class="flex items-center gap-2">
           <span class="text-warm-400 w-14 shrink-0">Session</span>
           <span class="text-warm-600 dark:text-warm-300 font-mono text-[10px] truncate">
-            {{ chat.sessionInfo.sessionId || '--' }}
+            {{ chat.sessionInfo.sessionId || instance?.session_id || '--' }}
           </span>
         </div>
         <div class="flex items-center gap-2">

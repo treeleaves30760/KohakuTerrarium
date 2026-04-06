@@ -116,6 +116,7 @@ function _mapTerrarium(data) {
     id: data.terrarium_id,
     type: "terrarium",
     config_name: data.name,
+    pwd: data.pwd || "",
     status: data.running ? "running" : "stopped",
     has_root: !!data.has_root,
     creatures: Object.entries(data.creatures || {}).map(([name, info]) => ({
@@ -143,6 +144,7 @@ function _mapAgent(data) {
     model: data.model || "",
     provider: data.provider || "",
     session_id: data.session_id || "",
+    pwd: data.pwd || "",
     max_context: data.max_context || 0,
     compact_threshold: data.compact_threshold || 0,
     status: data.running ? "running" : "stopped",

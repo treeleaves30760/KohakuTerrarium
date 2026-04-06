@@ -310,12 +310,22 @@ class TerrariumRuntime(HotPlugMixin):
         channel_info: list[dict[str, str]] = []
         channel_info = self.environment.shared_channels.get_channel_info()
 
+        # Working directory from root agent or first creature
+        pwd = ""
+        if self._root_agent and hasattr(self._root_agent, "executor"):
+            pwd = str(self._root_agent.executor._working_dir)
+        elif self._creatures:
+            first = next(iter(self._creatures.values()))
+            if hasattr(first.agent, "executor"):
+                pwd = str(first.agent.executor._working_dir)
+
         return {
             "name": self.config.name,
             "running": self._running,
             "has_root": self._root_agent is not None,
             "creatures": creature_states,
             "channels": channel_info,
+            "pwd": pwd,
         }
 
     # ------------------------------------------------------------------
