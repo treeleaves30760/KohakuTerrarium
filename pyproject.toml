@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "KohakuTerrarium"
-version = "0.2.0"
+version = "1.0.0b1"
 description = "A universal agent framework for building self-driven AI agents and multi-agent teams"
 authors = [
     { name = "Shih-Ying Yeh (KohakuBlueLeaf)", email = "apolloyeh0123@gmail.com" },
@@ -31,11 +31,11 @@ dependencies = [
     "rich>=14.0.0",
     "pyyaml>=6.0.0",
     "jinja2>=3.1.0",
-    "aiofiles>=24.0.0",
+    "aiofiles>=25.1.0",
     "python-dotenv>=1.0.0",
     "kohakuvault>=0.7.0",
-    "textual>=3.0.0",
-    "html2text>=2024.0.0",
+    "textual>=8.0.0",
+    "html2text>=2025.0.0",
     "tomli>=2.0.0; python_version<'3.11'",
     "gitpython>=3.1.0",
 ]
@@ -57,17 +57,17 @@ api = [
 dev = [
     "pytest>=9.0.0",
     "pytest-asyncio>=1.3.0",
-    "black>=25.12.0",
+    "black>=26.3.0",
     "ruff>=0.9.0",
 ]
 discord = [
     "discord.py>=2.0.0",
-    "Pillow>=10.0.0",
+    "Pillow>=12.2.0",
 ]
 asr = [
-    "openai-whisper>=20240930",
+    "openai-whisper>=20250625",
     "sounddevice>=0.4.0",
-    "numpy>=1.20.0",
+    "numpy>=2.4.0",
 ]
 # Web tools: fetch pages + search
 web = [
@@ -83,10 +83,10 @@ embeddings-light = [
     "model2vec>=0.8.0",
 ]
 embeddings = [
-    "sentence-transformers>=4.0.0",
+    "sentence-transformers>=5.0.0",
 ]
 desktop = [
-    "pywebview>=5.0",
+    "pywebview>=6.0",
 ]
 all = [
     "KohakuTerrarium[api,dev,web,browser,embeddings,embeddings-light]",
@@ -131,15 +131,15 @@ requires = [
     "rich>=14.0.0",
     "pyyaml>=6.0.0",
     "jinja2>=3.1.0",
-    "aiofiles>=24.0.0",
+    "aiofiles>=25.0.0",
     "python-dotenv>=1.0.0",
     "kohakuvault>=0.7.0",
-    "textual>=3.0.0",
-    "html2text>=2024.0.0",
+    "textual>=8.0.0",
+    "html2text>=2025.0.0",
     "gitpython>=3.1.0",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.34.0",
-    "pywebview>=5.0",
+    "pywebview>=6.0",
     "trafilatura>=2.0.0",
     "ddgs>=9.0.0",
 ]
