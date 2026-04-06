@@ -61,14 +61,11 @@ class ReadTool(BaseTool):
             return await self._read_image(file_path, path)
 
         # PDF files: return text + rendered page images
+        # offset/limit are reused as page offset/limit for PDFs
         if file_path.suffix.lower() == ".pdf":
-            if args.get("offset") or args.get("limit"):
-                return ToolResult(
-                    error="PDF files do not support offset/limit. "
-                    'Use the pages= argument instead, e.g. pages="1-5".'
-                )
-            pages = args.get("pages", None)
-            return await self._read_pdf(file_path, path, pages)
+            page_offset = int(args.get("offset", 0))
+            page_limit = int(args.get("limit", 0))
+            return await self._read_pdf(file_path, path, page_offset, page_limit)
 
         # Binary file guard (non-image binaries)
         if is_binary_file(file_path):
@@ -163,9 +160,16 @@ class ReadTool(BaseTool):
             return ToolResult(error=str(e))
 
     async def _read_pdf(
-        self, file_path: Path, original_path: str, pages: str | None
+        self,
+        file_path: Path,
+        original_path: str,
+        page_offset: int,
+        page_limit: int,
     ) -> ToolResult:
-        """Read a PDF file: extract text + render page images."""
+        """Read a PDF file: extract text + render page images.
+
+        Uses offset/limit as page numbers (0-based offset, limit = page count).
+        """
         try:
             import fitz  # pymupdf
         except ImportError:
@@ -186,20 +190,23 @@ class ReadTool(BaseTool):
             doc.close()
             return ToolResult(output="Empty PDF (0 pages).", exit_code=0)
 
-        # Parse page range
-        start, end = 0, total_pages
-        if pages:
-            start, end = _parse_page_range(pages, total_pages)
+        # Apply offset/limit as page range
+        start = min(page_offset, total_pages)
+        end = total_pages
+        if page_limit > 0:
+            end = min(start + page_limit, total_pages)
 
-        # Soft warning for large PDFs without explicit page range
+        # Soft warning for large reads without explicit offset/limit
         warn_threshold = int(self.config.extra.get("pdf_page_warn", 20))
-        if not pages and total_pages > warn_threshold:
+        if page_offset == 0 and page_limit == 0 and total_pages > warn_threshold:
             doc.close()
             return ToolResult(
                 error=f"This PDF has {total_pages} pages. Reading all at once "
-                f"will be very large. Please specify a page range with the "
-                f"pages= argument (NOT offset/limit — those are for text files only). "
-                f'Example: pages="1-{warn_threshold}" or pages="1-{total_pages}" '
+                f"will be very large. Please use offset and limit to read a "
+                f"range of pages. For PDFs, offset is the starting page (0-based) "
+                f"and limit is the number of pages to read. "
+                f"Example: offset=0, limit={warn_threshold} for the first "
+                f"{warn_threshold} pages. Or offset=0, limit={total_pages} "
                 f"if you really want all pages."
             )
 
@@ -256,7 +263,7 @@ class ReadTool(BaseTool):
             text_content = "(No extractable text — check the page images below.)"
 
         header = f"PDF: {original_path} ({total_pages} pages"
-        if pages:
+        if page_offset > 0 or page_limit > 0:
             header += f", showing pages {start + 1}-{end}"
         header += ")\n"
 
@@ -357,20 +364,3 @@ _IMAGE_MIME = {
 def _is_image_file(path: Path) -> bool:
     """Check if a file is a supported image format."""
     return path.suffix.lower() in _IMAGE_EXTENSIONS
-
-
-def _parse_page_range(pages: str, total: int) -> tuple[int, int]:
-    """Parse page range string. Returns (start, end) as 0-based indices.
-
-    Supports: "3" (single page), "1-5" (range), "10-20" (range).
-    Page numbers are 1-based in input, returned as 0-based.
-    """
-    pages = pages.strip()
-    if "-" in pages:
-        parts = pages.split("-", 1)
-        start = max(0, int(parts[0]) - 1)
-        end = min(total, int(parts[1]))
-    else:
-        start = max(0, int(pages) - 1)
-        end = min(total, start + 1)
-    return start, end
