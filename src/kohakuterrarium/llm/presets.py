@@ -94,42 +94,47 @@ PRESETS: dict[str, dict[str, Any]] = {
         "max_context": 128000,
     },
     # ═══════════════════════════════════════════════════════
-    #  OpenAI via OpenRouter
+    #  OpenAI via OpenRouter (uses OR context windows, not Codex)
     # ═══════════════════════════════════════════════════════
     "or-gpt-5.4": {
         "provider": "openai",
         "model": "openai/gpt-5.4",
         "base_url": "https://openrouter.ai/api/v1",
         "api_key_env": "OPENROUTER_API_KEY",
-        "max_context": 272000,
+        "max_context": 1050000,
+        "extra_body": {"reasoning": {"effort": "medium"}},
     },
     "or-gpt-5.4-mini": {
         "provider": "openai",
         "model": "openai/gpt-5.4-mini",
         "base_url": "https://openrouter.ai/api/v1",
         "api_key_env": "OPENROUTER_API_KEY",
-        "max_context": 272000,
+        "max_context": 400000,
+        "extra_body": {"reasoning": {"effort": "medium"}},
     },
     "or-gpt-5.4-nano": {
         "provider": "openai",
         "model": "openai/gpt-5.4-nano",
         "base_url": "https://openrouter.ai/api/v1",
         "api_key_env": "OPENROUTER_API_KEY",
-        "max_context": 272000,
+        "max_context": 400000,
+        "extra_body": {"reasoning": {"effort": "medium"}},
     },
     "or-gpt-5.3-codex": {
         "provider": "openai",
         "model": "openai/gpt-5.3-codex",
         "base_url": "https://openrouter.ai/api/v1",
         "api_key_env": "OPENROUTER_API_KEY",
-        "max_context": 272000,
+        "max_context": 400000,
+        "extra_body": {"reasoning": {"effort": "medium"}},
     },
     "or-gpt-5.1": {
         "provider": "openai",
         "model": "openai/gpt-5.1",
         "base_url": "https://openrouter.ai/api/v1",
         "api_key_env": "OPENROUTER_API_KEY",
-        "max_context": 272000,
+        "max_context": 400000,
+        "extra_body": {"reasoning": {"effort": "medium"}},
     },
     "or-gpt-4o": {
         "provider": "openai",
@@ -154,6 +159,7 @@ PRESETS: dict[str, dict[str, Any]] = {
         "base_url": "https://openrouter.ai/api/v1",
         "api_key_env": "OPENROUTER_API_KEY",
         "max_context": 1000000,
+        "extra_body": {"reasoning": {"enabled": True}},
     },
     "claude-sonnet-4.6": {
         "provider": "openai",
@@ -161,6 +167,7 @@ PRESETS: dict[str, dict[str, Any]] = {
         "base_url": "https://openrouter.ai/api/v1",
         "api_key_env": "OPENROUTER_API_KEY",
         "max_context": 1000000,
+        "extra_body": {"reasoning": {"enabled": True}},
     },
     "claude-sonnet-4.5": {
         "provider": "openai",
@@ -168,6 +175,7 @@ PRESETS: dict[str, dict[str, Any]] = {
         "base_url": "https://openrouter.ai/api/v1",
         "api_key_env": "OPENROUTER_API_KEY",
         "max_context": 1000000,
+        "extra_body": {"reasoning": {"enabled": True}},
     },
     "claude-haiku-4.5": {
         "provider": "openai",
@@ -230,6 +238,7 @@ PRESETS: dict[str, dict[str, Any]] = {
         "base_url": "https://openrouter.ai/api/v1",
         "api_key_env": "OPENROUTER_API_KEY",
         "max_context": 1048576,
+        "extra_body": {"reasoning": {"effort": "medium"}},
     },
     "gemini-3-flash": {
         "provider": "openai",
@@ -237,6 +246,7 @@ PRESETS: dict[str, dict[str, Any]] = {
         "base_url": "https://openrouter.ai/api/v1",
         "api_key_env": "OPENROUTER_API_KEY",
         "max_context": 1048576,
+        "extra_body": {"reasoning": {"effort": "medium"}},
     },
     "gemini-3.1-flash-lite": {
         "provider": "openai",
@@ -433,6 +443,118 @@ PRESETS: dict[str, dict[str, Any]] = {
         "api_key_env": "OPENROUTER_API_KEY",
         "max_context": 202752,
     },
+    # ═══════════════════════════════════════════════════════
+    #  xAI Grok series (via OpenRouter)
+    # ═══════════════════════════════════════════════════════
+    "grok-4": {
+        "provider": "openai",
+        "model": "x-ai/grok-4",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 256000,
+        # Reasoning is mandatory and not configurable
+    },
+    "grok-4.20": {
+        "provider": "openai",
+        "model": "x-ai/grok-4.20",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 272000,  # 2M model, use 272K budget
+        "extra_body": {"reasoning": {"enabled": True}},
+    },
+    "grok-4.20-multi": {
+        "provider": "openai",
+        "model": "x-ai/grok-4.20-multi-agent",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 272000,
+        "extra_body": {"reasoning": {"effort": "medium"}},
+    },
+    "grok-4-fast": {
+        "provider": "openai",
+        "model": "x-ai/grok-4-fast",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 272000,  # 2M model, use 272K budget
+        "extra_body": {"reasoning": {"enabled": True}},
+    },
+    "grok-4.1-fast": {
+        "provider": "openai",
+        "model": "x-ai/grok-4.1-fast",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 272000,
+        "extra_body": {"reasoning": {"enabled": True}},
+    },
+    "grok-code-fast": {
+        "provider": "openai",
+        "model": "x-ai/grok-code-fast-1",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 256000,
+        "extra_body": {"reasoning": {"enabled": True}},
+    },
+    "grok-3": {
+        "provider": "openai",
+        "model": "x-ai/grok-3",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 131072,
+    },
+    "grok-3-mini": {
+        "provider": "openai",
+        "model": "x-ai/grok-3-mini",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 131072,
+        "extra_body": {"reasoning": {"effort": "high"}},
+    },
+    # ═══════════════════════════════════════════════════════
+    #  Mistral series (via OpenRouter)
+    # ═══════════════════════════════════════════════════════
+    "mistral-large": {
+        "provider": "openai",
+        "model": "mistralai/mistral-large-2512",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 262144,
+    },
+    "mistral-medium": {
+        "provider": "openai",
+        "model": "mistralai/mistral-medium-3.1",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 131072,
+    },
+    "mistral-small": {
+        "provider": "openai",
+        "model": "mistralai/mistral-small-2603",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 262144,
+        "extra_body": {"reasoning": {"effort": "high"}},
+    },
+    "codestral": {
+        "provider": "openai",
+        "model": "mistralai/codestral-2508",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 256000,
+    },
+    "devstral": {
+        "provider": "openai",
+        "model": "mistralai/devstral-2512",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 262144,
+    },
+    "pixtral-large": {
+        "provider": "openai",
+        "model": "mistralai/pixtral-large-2411",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "max_context": 131072,
+    },
 }
 
 # Aliases: short names -> canonical preset names
@@ -469,4 +591,10 @@ ALIASES: dict[str, str] = {
     "mimo": "mimo-v2-pro",
     # GLM
     "glm": "glm-5-turbo",
+    # Grok
+    "grok": "grok-4",
+    "grok-fast": "grok-4-fast",
+    "grok-code": "grok-code-fast",
+    # Mistral
+    "mistral": "mistral-large",
 }
