@@ -14,9 +14,10 @@ import asyncio
 from typing import TYPE_CHECKING, Any
 
 from kohakuterrarium.core.agent_handlers import AgentHandlersMixin
-from kohakuterrarium.core.agent_init import AgentInitMixin
+from kohakuterrarium.bootstrap.agent_init import AgentInitMixin
 from kohakuterrarium.core.compact import CompactConfig, CompactManager
 from kohakuterrarium.core.config import AgentConfig, load_agent_config
+from kohakuterrarium.core.job import JobState
 from kohakuterrarium.core.events import TriggerEvent, create_user_input_event
 from kohakuterrarium.core.loader import ModuleLoader
 from kohakuterrarium.core.session import Session
@@ -35,37 +36,7 @@ logger = get_logger(__name__)
 
 
 class Agent(AgentInitMixin, AgentHandlersMixin):
-    """
-    Main agent orchestrator.
-
-    Wires together:
-    - LLM provider
-    - Controller (conversation loop)
-    - Executor (tool execution)
-    - Input module
-    - Output router
-
-    Usage:
-        # From config path (recommended)
-        agent = Agent.from_path("agents/my_agent")
-        await agent.run()
-
-        # Programmatic usage
-        agent = Agent.from_path("agents/my_agent")
-        await agent.start()
-
-        # Inject events programmatically
-        await agent.inject_input("Hello!")
-
-        # Set custom output handler
-        agent.set_output_handler(lambda text: print(f"AI: {text}"))
-
-        # Monitor state
-        print(f"Running: {agent.is_running}")
-        print(f"Tools: {agent.tools}")
-
-        await agent.stop()
-    """
+    """Main agent orchestrator. Wires LLM, controller, executor, I/O."""
 
     @classmethod
     def from_path(
@@ -202,15 +173,7 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
         """Start all agent modules."""
         logger.info("Starting agent", agent_name=self.config.name)
 
-        # Configure TUI with terrarium tabs if available (set by runtime)
-        terrarium_tabs = getattr(self, "_terrarium_tui_tabs", None)
-        if terrarium_tabs and hasattr(self.input, "_tui"):
-            # TUIInput hasn't started yet, but we can pre-configure
-            # by storing tabs on the session for TUIInput to read
-            self.session.extra["terrarium_tui_tabs"] = terrarium_tabs
-            terrarium_rt = getattr(self, "_terrarium_runtime", None)
-            if terrarium_rt:
-                self.session.extra["terrarium_runtime"] = terrarium_rt
+        self._configure_tui_tabs()
 
         await self.input.start()
         await self.output_router.start()
@@ -220,7 +183,43 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
         if tui_input and tui_input._app:
             tui_input._app.on_interrupt = self.interrupt
 
-        # Wire trigger fired notification to output
+        # Wire click-to-cancel on TUI running panel
+        if tui_input:
+            tui_input.on_cancel_job = self._cancel_job
+
+        self._wire_trigger_notifications()
+        await self.trigger_manager.start_all()
+        self._wire_completion_callbacks()
+
+        self._running = True
+        self._shutdown_event.clear()
+
+        self._init_compact_manager()
+        self._publish_session_info()
+
+        if self._termination_checker:
+            self._termination_checker.start()
+
+    def _configure_tui_tabs(self) -> None:
+        """Configure TUI with terrarium tabs if available (set by runtime).
+
+        The terrarium runtime stores tab/runtime info on session.extra
+        before calling agent.run(). This method is a no-op hook that
+        confirms the data is already in place for TUIInput to read.
+        """
+        # Data is written to session.extra by TerrariumRuntime.run()
+        # before agent.run() -> agent.start() -> here, so nothing
+        # needs to be copied. Just verify presence for debug logging.
+        terrarium_tabs = self.session.extra.get("terrarium_tui_tabs")
+        if terrarium_tabs and hasattr(self.input, "_tui"):
+            logger.debug(
+                "Terrarium TUI tabs configured via session.extra",
+                tab_count=len(terrarium_tabs),
+            )
+
+    def _wire_trigger_notifications(self) -> None:
+        """Wire trigger fired notifications to the output router."""
+
         def _on_trigger_fired(trigger_id, event):
             ctx = event.context or {}
             channel = ctx.get("channel", "")
@@ -241,9 +240,8 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
 
         self.trigger_manager.on_trigger_fired = _on_trigger_fired
 
-        await self.trigger_manager.start_all()
-
-        # Wire completion callbacks -> _process_event
+    def _wire_completion_callbacks(self) -> None:
+        """Wire executor and sub-agent completion/activity callbacks."""
         # Background tools and sub-agents deliver results as trigger events
         self.executor._on_complete = self._on_bg_complete
         self.subagent_manager._on_complete = self._on_bg_complete
@@ -268,11 +266,12 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
 
         self.subagent_manager._on_tool_activity = _on_sa_tool_activity
 
-        self._running = True
-        self._shutdown_event.clear()
+    def _init_compact_manager(self) -> None:
+        """Initialize the auto-compact manager.
 
-        # Initialize auto-compact manager
-        # If compact.max_tokens not set, derive from LLM profile's max_context
+        If compact.max_tokens not set, derives from LLM profile's max_context.
+        Restores compact_count from session store if available.
+        """
         compact_data = self.config.compact or {}
         default_compact_max = CompactConfig.max_tokens
         if hasattr(self.llm, "_profile_max_context"):
@@ -306,7 +305,12 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
             except (KeyError, TypeError, ValueError):
                 pass
 
-        # Push session info to output (for TUI session panel)
+    def _publish_session_info(self) -> None:
+        """Publish session info to output (for TUI session panel).
+
+        Handles session ID retrieval, LLM profile persistence,
+        prompt cache key, embedding config, and session_info notification.
+        """
         session_id = ""
         if self.session_store:
             try:
@@ -345,6 +349,7 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
             or getattr(getattr(self.llm, "config", None), "model", "")
             or getattr(self.config, "model", "")
         )
+        compact_cfg = self.compact_manager.config
         max_context = compact_cfg.max_tokens
         compact_at = int(max_context * compact_cfg.threshold) if max_context else 0
         self.output_router.notify_activity(
@@ -358,9 +363,6 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
                 "compact_threshold": compact_at,
             },
         )
-
-        if self._termination_checker:
-            self._termination_checker.start()
 
     def interrupt(self) -> None:
         """Interrupt the current processing cycle immediately.
@@ -377,12 +379,55 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
         if processing and not processing.done():
             processing.cancel()
 
-        # Also cancel running direct tool tasks
+        # Also cancel running direct (non-background) tool tasks
         for job_id, task in list(self.executor._tasks.items()):
             status = self.executor.get_status(job_id)
             if status and status.state.value == "running" and not task.done():
                 task.cancel()
+
+        # NOTE: Background sub-agents are NOT cancelled by interrupt.
+        # They have their own lifecycle and must be cancelled individually
+        # via _cancel_job() (TUI click / frontend stopTask API).
+
         logger.info("Agent interrupted", agent_name=self.config.name)
+
+    def _cancel_job(self, job_id: str, job_name: str) -> None:
+        """Cancel a single running job by ID (tool or sub-agent).
+
+        Called from the TUI running panel click handler.
+        """
+        cancelled = False
+
+        # Try executor (tools) first
+        task = self.executor._tasks.get(job_id)
+        if task and not task.done():
+            task.cancel()
+            self.executor.job_store.update_status(job_id, state=JobState.CANCELLED)
+            cancelled = True
+
+        # Try sub-agent manager
+        if not cancelled:
+            sa_task = self.subagent_manager._tasks.get(job_id)
+            if sa_task and not sa_task.done():
+                sa_task.cancel()
+                self.subagent_manager.job_store.update_status(
+                    job_id, state=JobState.CANCELLED
+                )
+                cancelled = True
+
+        if cancelled:
+            logger.info(
+                "Job cancelled via TUI",
+                job_id=job_id,
+                job_name=job_name,
+                agent_name=self.config.name,
+            )
+            # Notify output so the running panel updates
+            self.output_router.notify_activity(
+                "job_cancelled",
+                f"Cancelled: {job_name}",
+                metadata={"job_id": job_id, "job_name": job_name},
+            )
 
     def switch_model(self, profile_name: str) -> str:
         """Switch the LLM provider to a different model profile.
@@ -439,6 +484,7 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
         self._running = False
         self._shutdown_event.set()
 
+        await self.subagent_manager.cancel_all()
         await self.trigger_manager.stop_all()
         await self.input.stop()
         await self.output_router.stop()
@@ -553,26 +599,12 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
         return self.controller.conversation.to_messages()
 
     async def inject_input(self, text: str, source: str = "programmatic") -> None:
-        """
-        Inject user input programmatically.
-
-        Use this to send input without going through the input module.
-        User input is recorded in session store via _process_event hook.
-
-        Args:
-            text: Input text to inject
-            source: Source identifier for context
-        """
+        """Inject user input programmatically (bypasses input module)."""
         event = create_user_input_event(text, source=source)
         await self._process_event(event)
 
     async def inject_event(self, event: TriggerEvent) -> None:
-        """
-        Inject a custom event programmatically.
-
-        Args:
-            event: TriggerEvent to inject
-        """
+        """Inject a custom TriggerEvent programmatically."""
         await self._process_event(event)
 
     def attach_session_store(self, store: Any) -> None:
@@ -603,18 +635,7 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
         logger.debug("Session store attached", agent=self.config.name)
 
     def set_output_handler(self, handler: Any, replace_default: bool = False) -> None:
-        """
-        Set a custom output handler callback.
-
-        The handler receives text chunks as they're generated.
-
-        Args:
-            handler: Callable that receives (text: str) for each chunk
-            replace_default: If True, replace default output; if False, add as secondary
-
-        Example:
-            agent.set_output_handler(lambda text: print(f"AI: {text}"))
-        """
+        """Set a custom output handler callback for text chunks."""
 
         # Create a simple callback output module
         class CallbackOutput(OutputModule):
@@ -712,12 +733,7 @@ class Agent(AgentInitMixin, AgentHandlersMixin):
         return ""
 
     def get_state(self) -> dict[str, Any]:
-        """
-        Get agent state for monitoring.
-
-        Returns:
-            Dict with agent state information
-        """
+        """Get agent state for monitoring."""
         return {
             "name": self.config.name,
             "running": self._running,

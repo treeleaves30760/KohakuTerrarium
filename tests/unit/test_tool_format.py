@@ -130,7 +130,7 @@ class TestFormatResolution:
 
     def _make_mixin(self, tool_format: str | dict = "bracket"):
         """Create a minimal AgentInitMixin-like object for testing."""
-        from kohakuterrarium.core.agent_init import AgentInitMixin
+        from kohakuterrarium.bootstrap.agent_init import AgentInitMixin
 
         mixin = object.__new__(AgentInitMixin)
         mixin.config = AgentConfig(name="test", tool_format=tool_format)

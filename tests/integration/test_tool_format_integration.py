@@ -202,7 +202,7 @@ class TestResolutionFlowIntegration:
 
     def _make_mixin(self, tool_format):
         """Create a minimal AgentInitMixin for testing."""
-        from kohakuterrarium.core.agent_init import AgentInitMixin
+        from kohakuterrarium.bootstrap.agent_init import AgentInitMixin
 
         mixin = object.__new__(AgentInitMixin)
         mixin.config = AgentConfig(name="test", tool_format=tool_format)
@@ -256,7 +256,7 @@ controller:
         )
         config = load_agent_config(agent_dir)
 
-        from kohakuterrarium.core.agent_init import AgentInitMixin
+        from kohakuterrarium.bootstrap.agent_init import AgentInitMixin
 
         mixin = object.__new__(AgentInitMixin)
         mixin.config = config
@@ -281,7 +281,7 @@ controller:
         )
         config = load_agent_config(agent_dir)
 
-        from kohakuterrarium.core.agent_init import AgentInitMixin
+        from kohakuterrarium.bootstrap.agent_init import AgentInitMixin
 
         mixin = object.__new__(AgentInitMixin)
         mixin.config = config

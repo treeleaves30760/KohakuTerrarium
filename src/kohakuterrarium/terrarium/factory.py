@@ -40,6 +40,53 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
+def _inject_channel_triggers(
+    agent: Agent,
+    subscriber_id: str,
+    channel_names: list[str],
+    prompts: dict[str, str],
+    ignore_sender: str,
+    registry: Any,
+    config: TerrariumConfig,
+) -> None:
+    """Create ChannelTrigger objects and register them on an agent.
+
+    Shared helper used by both ``build_root_agent`` and ``build_creature``
+    to wire channel triggers into an agent's trigger_manager.
+
+    Args:
+        agent: The agent to inject triggers into.
+        subscriber_id: Unique subscriber prefix (e.g. "root" or creature name).
+        channel_names: Channel names to listen on.
+        prompts: Mapping of channel name to prompt template string.
+        ignore_sender: Sender name to ignore (avoids echo).
+        registry: The shared channel registry.
+        config: The terrarium config (used for broadcast name lookup in logs).
+    """
+    broadcast_names = {
+        ch.name for ch in config.channels if ch.channel_type == "broadcast"
+    }
+    for ch_name in channel_names:
+        prompt = prompts.get(ch_name, "[Channel '{channel}' from {sender}]: {content}")
+        trigger = ChannelTrigger(
+            channel_name=ch_name,
+            subscriber_id=f"{subscriber_id}_{ch_name}",
+            prompt=prompt,
+            ignore_sender=ignore_sender,
+            registry=registry,
+        )
+        trigger_id = f"channel_{subscriber_id}_{ch_name}"
+        agent.trigger_manager._triggers[trigger_id] = trigger
+        agent.trigger_manager._created_at[trigger_id] = datetime.now()
+        logger.debug(
+            "Injected channel trigger",
+            subscriber=subscriber_id,
+            channel=ch_name,
+            trigger_id=trigger_id,
+            broadcast=ch_name in broadcast_names,
+        )
+
+
 def build_root_agent(
     config: TerrariumConfig,
     environment: Environment,
@@ -99,38 +146,30 @@ def build_root_agent(
     inject_prompt_section(agent, awareness)
 
     # Auto-inject channel triggers for ALL channels (root hears everything)
-    broadcast_names = {
-        ch.name for ch in config.channels if ch.channel_type == "broadcast"
-    }
+    root_prompts: dict[str, str] = {}
     for ch in config.channels:
         if ch.channel_type == "broadcast":
-            prompt = (
+            root_prompts[ch.name] = (
                 "[Channel '{channel}' (broadcast) from {sender}]: {content}\n\n"
                 "You are listening to all channels as the team coordinator. "
                 "This was broadcast on '{channel}'. "
                 "You do NOT need to respond to every message."
             )
         else:
-            prompt = (
+            root_prompts[ch.name] = (
                 "[Channel '{channel}' from {sender}]: {content}\n\n"
                 "A message arrived on '{channel}'. "
                 "Evaluate if you need to act on it or relay information."
             )
-        trigger = ChannelTrigger(
-            channel_name=ch.name,
-            subscriber_id=f"root_{ch.name}",
-            prompt=prompt,
-            ignore_sender="root",
-            registry=environment.shared_channels,
-        )
-        trigger_id = f"channel_root_{ch.name}"
-        agent.trigger_manager._triggers[trigger_id] = trigger
-        agent.trigger_manager._created_at[trigger_id] = datetime.now()
-        logger.debug(
-            "Injected root channel trigger",
-            channel=ch.name,
-            broadcast=ch.name in broadcast_names,
-        )
+    _inject_channel_triggers(
+        agent=agent,
+        subscriber_id="root",
+        channel_names=[ch.name for ch in config.channels],
+        prompts=root_prompts,
+        ignore_sender="root",
+        registry=environment.shared_channels,
+        config=config,
+    )
 
     return agent
 
@@ -257,43 +296,34 @@ def build_creature(
     )
 
     # -- Inject ChannelTriggers for listen channels --
-    # Triggers listen on SHARED channels (environment.shared_channels)
-    # Broadcast channels get a prompt that frames messages as informational
-    broadcast_names = {
-        ch.name for ch in config.channels if ch.channel_type == "broadcast"
-    }
-
     # Always listen on the creature's own direct channel
     all_listen = list(creature_cfg.listen_channels)
     if creature_cfg.name not in all_listen:
         all_listen.append(creature_cfg.name)
 
+    # Broadcast channels get a prompt that frames messages as informational
+    broadcast_names = {
+        ch.name for ch in config.channels if ch.channel_type == "broadcast"
+    }
+    creature_prompts: dict[str, str] = {}
     for ch_name in all_listen:
         if ch_name in broadcast_names:
-            prompt = (
+            creature_prompts[ch_name] = (
                 "[Channel '{channel}' (broadcast) from {sender}]: {content}\n\n"
                 "This was broadcast to all listeners on '{channel}'. "
                 "Only respond if relevant to your current task."
             )
         else:
-            prompt = "[Channel '{channel}' from {sender}]: {content}"
-        trigger = ChannelTrigger(
-            channel_name=ch_name,
-            subscriber_id=creature_cfg.name,
-            prompt=prompt,
-            ignore_sender=creature_cfg.name,
-            registry=environment.shared_channels,
-        )
-        trigger_id = f"channel_{creature_cfg.name}_{ch_name}"
-        agent.trigger_manager._triggers[trigger_id] = trigger
-        agent.trigger_manager._created_at[trigger_id] = datetime.now()
-        logger.debug(
-            "Injected channel trigger",
-            creature=creature_cfg.name,
-            channel=ch_name,
-            trigger_id=trigger_id,
-            broadcast=ch_name in broadcast_names,
-        )
+            creature_prompts[ch_name] = "[Channel '{channel}' from {sender}]: {content}"
+    _inject_channel_triggers(
+        agent=agent,
+        subscriber_id=creature_cfg.name,
+        channel_names=all_listen,
+        prompts=creature_prompts,
+        ignore_sender=creature_cfg.name,
+        registry=environment.shared_channels,
+        config=config,
+    )
 
     # -- Inject channel topology into the system prompt --
     topology_prompt = build_channel_topology_prompt(config, creature_cfg)

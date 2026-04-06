@@ -166,19 +166,9 @@ def build_channel_topology_prompt(
     lines.append("")
 
     for ch_name in sorted(relevant_names):
-        ch_cfg = ch_by_name.get(ch_name)
-        if ch_cfg is None:
-            continue
-
-        desc = f" -- {ch_cfg.description}" if ch_cfg.description else ""
-        roles: list[str] = []
-        if ch_name in listen_set:
-            roles.append("listen")
-        if ch_name in send_set:
-            roles.append("send")
-        role_str = f" ({', '.join(roles)})" if roles else ""
-
-        lines.append(f"- `{ch_name}` [{ch_cfg.channel_type}]{role_str}{desc}")
+        block = _format_channel_block(ch_name, ch_by_name, listen_set, send_set)
+        if block:
+            lines.append(block)
 
     # Direct channel
     lines.append(
@@ -198,6 +188,31 @@ def build_channel_topology_prompt(
         lines.append("")
 
     return "\n".join(lines)
+
+
+def _format_channel_block(
+    ch_name: str,
+    ch_by_name: dict[str, "ChannelConfig"],
+    listen_set: set[str],
+    send_set: set[str],
+) -> str:
+    """Format a single channel's prompt line for the topology section.
+
+    Returns an empty string if the channel is not found in ch_by_name.
+    """
+    ch_cfg = ch_by_name.get(ch_name)
+    if ch_cfg is None:
+        return ""
+
+    desc = f" -- {ch_cfg.description}" if ch_cfg.description else ""
+    roles: list[str] = []
+    if ch_name in listen_set:
+        roles.append("listen")
+    if ch_name in send_set:
+        roles.append("send")
+    role_str = f" ({', '.join(roles)})" if roles else ""
+
+    return f"- `{ch_name}` [{ch_cfg.channel_type}]{role_str}{desc}"
 
 
 def _find_terrarium_config(path: Path) -> Path:

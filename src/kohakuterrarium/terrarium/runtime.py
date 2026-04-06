@@ -54,6 +54,7 @@ class TerrariumRuntime(HotPlugMixin):
         self._running = False
         self._creature_tasks: list[asyncio.Task] = []
         self._root_agent: Agent | None = None
+        self._pending_session_store: Any = None
 
     # ------------------------------------------------------------------
     # Lazy-initialized API / observer
@@ -214,7 +215,7 @@ class TerrariumRuntime(HotPlugMixin):
         await self.start()
 
         # Attach pending session store (set before run, applied after start)
-        if hasattr(self, "_pending_session_store") and self._pending_session_store:
+        if self._pending_session_store:
             self.attach_session_store(self._pending_session_store)
             self._pending_session_store = None
 
@@ -233,9 +234,7 @@ class TerrariumRuntime(HotPlugMixin):
                 tui_tabs.extend(h.name for h in self._creatures.values())
                 for ch_info in self.list_channels():
                     tui_tabs.append(f"#{ch_info['name']}")
-                self._root_agent._terrarium_tui_tabs = tui_tabs
-                self._root_agent._terrarium_runtime = self
-                # Also store on the session for TUIInput to read
+                # Store on the session for TUIInput to read
                 if self._root_agent.session:
                     self._root_agent.session.extra["terrarium_tui_tabs"] = tui_tabs
                     self._root_agent.session.extra["terrarium_runtime"] = self
@@ -319,7 +318,7 @@ class TerrariumRuntime(HotPlugMixin):
             if hasattr(first.agent, "executor"):
                 pwd = str(first.agent.executor._working_dir)
 
-        return {
+        status = {
             "name": self.config.name,
             "running": self._running,
             "has_root": self._root_agent is not None,
@@ -327,6 +326,26 @@ class TerrariumRuntime(HotPlugMixin):
             "channels": channel_info,
             "pwd": pwd,
         }
+
+        if self._root_agent:
+            status["root_model"] = getattr(
+                self._root_agent.llm, "model", ""
+            ) or getattr(getattr(self._root_agent.llm, "config", None), "model", "")
+            status["root_session_id"] = ""
+            if self._root_agent.session_store:
+                try:
+                    meta = self._root_agent.session_store.load_meta()
+                    status["root_session_id"] = meta.get("session_id", "")
+                except Exception:
+                    pass
+            compact = getattr(self._root_agent, "compact_manager", None)
+            if compact:
+                status["root_max_context"] = compact.config.max_tokens
+                status["root_compact_threshold"] = int(
+                    compact.config.max_tokens * compact.config.threshold
+                )
+
+        return status
 
     # ------------------------------------------------------------------
     # Internal helpers
