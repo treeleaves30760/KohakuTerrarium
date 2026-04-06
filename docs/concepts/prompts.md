@@ -244,4 +244,4 @@ terrarium:
 | `prompt/loader.py` | Loads and renders prompt files (Jinja2) |
 | `terrarium/config.py` | `build_channel_topology_prompt()` for creatures |
 | `terrarium/factory.py` | `build_root_awareness_prompt()` + `inject_prompt_section()` |
-| `core/agent_init.py` | Calls `aggregate_system_prompt()` during agent init |
+| `bootstrap/agent_init.py` | Calls `aggregate_system_prompt()` during agent init |

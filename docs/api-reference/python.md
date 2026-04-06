@@ -836,7 +836,7 @@ class CompactManager:
 | `creature_interrupt` | Interrupt a creature's current LLM turn | DIRECT |
 
 ```python
-from kohakuterrarium.builtins.tools import get_builtin_tool, BUILTIN_TOOLS
+from kohakuterrarium.builtins.tool_catalog import get_builtin_tool
 BashTool = get_builtin_tool("bash")
 ```
 
@@ -856,7 +856,7 @@ BashTool = get_builtin_tool("bash")
 | `response` | (none) | External |
 
 ```python
-from kohakuterrarium.builtins.subagents import get_builtin_subagent_config, BUILTIN_SUBAGENTS
+from kohakuterrarium.builtins.subagent_catalog import get_builtin_subagent_config, BUILTIN_SUBAGENTS
 ```
 
 ### Built-in Inputs

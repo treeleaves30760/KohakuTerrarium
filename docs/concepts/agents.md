@@ -147,7 +147,7 @@ Agent initialization is split into focused factory modules that each create one 
 | `bootstrap/subagents.py` | Load sub-agent configs and create manager |
 | `bootstrap/triggers.py` | Create trigger modules from config |
 
-`agent_init.py` calls these factories in sequence during `Agent.start()`.
+`bootstrap/agent_init.py` calls these factories in sequence during `Agent.start()`.
 
 ### Controller (`core/controller.py`)
 
@@ -335,6 +335,8 @@ src/kohakuterrarium/
 +-- core/                    # Core abstractions and runtime
 |   +-- agent.py             # Agent orchestrator
 |   +-- agent_handlers.py    # Event processing handlers
+|   +-- agent_tools.py       # Tool/subagent dispatch mixin (extracted from agent_handlers)
+|   +-- config_types.py      # Config dataclasses
 |   +-- controller.py        # LLM conversation loop + token usage tracking
 |   +-- conversation.py      # Message history management
 |   +-- executor.py          # Background tool execution
@@ -371,6 +373,7 @@ src/kohakuterrarium/
 |   +-- plugins.py           # Extensible plugins
 |
 +-- bootstrap/               # Agent initialization factories
+|   +-- agent_init.py       # AgentInitMixin - orchestrates component init
 |   +-- llm.py              # LLM provider creation
 |   +-- tools.py            # Tool loading and registration
 |   +-- io.py               # Input/output module creation
