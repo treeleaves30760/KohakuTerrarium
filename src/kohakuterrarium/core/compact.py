@@ -196,21 +196,10 @@ class CompactManager:
                     },
                 )
 
-            # Save to session store: event log + updated conversation snapshot
+            # Save conversation snapshot with post-compact version
+            # (The compact_complete event is already recorded by SessionOutput
+            # via notify_activity above — no need to append_event separately.)
             if self._session_store:
-                try:
-                    self._session_store.append_event(
-                        self._agent_name,
-                        "compact_summary",
-                        {
-                            "summary": summary,
-                            "messages_compacted": boundary - 1,
-                            "compact_round": self._compact_count,
-                        },
-                    )
-                except Exception:
-                    pass
-
                 # Overwrite conversation snapshot with post-compact version
                 # so resume gets the compacted conversation, not the full one
                 try:

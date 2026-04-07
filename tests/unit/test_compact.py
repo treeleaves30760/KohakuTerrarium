@@ -236,10 +236,9 @@ class TestRunCompact:
 
         await mgr._run_compact()
 
-        # Should have saved compact_summary event
-        store.append_event.assert_called_once()
-        call_args = store.append_event.call_args
-        assert call_args[0][1] == "compact_summary"
+        # Should have saved conversation snapshot (compact_complete event
+        # is recorded by SessionOutput via notify_activity, not here)
+        store.save_conversation.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_compact_with_llm_failure(self):
