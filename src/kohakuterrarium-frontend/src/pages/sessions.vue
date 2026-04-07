@@ -35,9 +35,9 @@
         </button>
       </div>
 
-      <!-- Empty state -->
+      <!-- Empty state (truly no sessions at all, not just filtered) -->
       <div
-        v-else-if="sessions.length === 0"
+        v-else-if="totalSessions === 0 && !searchQuery"
         class="card p-12 text-center text-secondary"
       >
         <div class="i-carbon-time text-3xl mx-auto mb-3 text-warm-400" />
@@ -47,7 +47,7 @@
         </div>
       </div>
 
-      <!-- Search + Session list -->
+      <!-- Search + Session list (always show search once we have any sessions or a query) -->
       <template v-else>
         <div class="mb-4">
           <input
@@ -58,11 +58,8 @@
           />
         </div>
 
-        <div v-if="sessions.length === 0 && searchQuery" class="card p-8 text-center text-secondary">
+        <div v-if="sessions.length === 0" class="card p-8 text-center text-secondary">
           No sessions match "{{ searchQuery }}"
-        </div>
-        <div v-else-if="sessions.length === 0" class="card p-8 text-center text-secondary">
-          No sessions found
         </div>
 
         <div v-else class="flex flex-col gap-2">
