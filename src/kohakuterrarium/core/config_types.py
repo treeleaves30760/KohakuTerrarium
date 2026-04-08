@@ -173,6 +173,9 @@ class AgentConfig:
     # MCP server configurations (connected on agent start)
     mcp_servers: list[dict[str, Any]] = field(default_factory=list)
 
+    # Plugin configurations (loaded during agent init)
+    plugins: list[dict[str, Any]] = field(default_factory=list)
+
     def get_api_key(self) -> str | None:
         """Get API key from environment."""
         return os.environ.get(self.api_key_env)
