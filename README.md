@@ -1,6 +1,7 @@
 <p align="center">
   <h1 align="center">KohakuTerrarium</h1>
-  <p align="center"><strong>Build self-contained agents that work alone. Wire them into teams that work together.</strong></p>
+  <p align="center"><strong>A universal agent-level abstraction framework.</strong></p>
+  <p align="center">Define what an agent is. Build any kind. Compose them into teams.</p>
 </p>
 
 <p align="center">
@@ -11,45 +12,74 @@
 
 ---
 
-KohakuTerrarium is built around one design choice: **vertical coordination (inside an agent) and horizontal coordination (between agents) are different problems, and they should stay separate**.
+## The Problem
 
-Most existing tools in the ecosystem work at adjacent layers — LangChain and LangGraph are orchestration frameworks, DSPy is an optimizer for LM programs, AutoGen and CrewAI help you set up multi-agent workflows, and Claude Code, Codex CLI, and OpenCode are finished agent products. What's missing is the layer underneath: **what an agent actually is as a reusable runtime unit**. KohakuTerrarium tries to be that layer.
+The AI ecosystem has plenty of tools, but they all operate at the wrong level of abstraction for building agents:
 
-- A **creature** is that unit. It's a complete agent with its own controller, tools, sub-agents, memory, triggers, input, and output. Even a single creature is already a multi-agent system internally — the controller delegates to sub-agents like explore, plan, worker, and critic, the same pattern you see in Claude Code and similar systems.
-- A **terrarium** is a **pure wiring layer** for connecting creatures. It sets up channels between them, manages their lifecycle, and exposes observability. No LLM, no reasoning, no hidden supervisor.
-- The same creature config runs **standalone** or inside a terrarium **unchanged**. Joining a team doesn't turn a creature into a different kind of object.
-- **Five module types** — input, output, tool, trigger, and sub-agent — are the building blocks for everything. Monitoring agents, research agents, coding agents, chat bots, and real-time agents are all different compositions of these same pieces.
+| Layer | Examples | What they are | The gap |
+|-------|----------|---------------|---------|
+| **LLM App** | LangChain, LangGraph, Dify | Frameworks for orchestrating LLM calls, chains, and pipelines | You build agents FROM these, but they don't define what an agent IS |
+| **Agent Product** | Claude Code, Codex, OpenCode | Complete, polished agent applications | Real agents — but closed. You can't decompose, reconfigure, or compose them |
+| **Simple Agent Lib** | smolagents | Lightweight agent loop with tools | Agent-level, but too thin — one loop, one tool list, no real module system |
+| **Multi-Agent Wrapper** | CrewAI, AutoGen | Frameworks for connecting multiple "agents" | Their "agent" is a thin wrapper around an LLM call with a role string — not a real runtime unit |
 
-That separation is the core idea, and it runs through the entire project: the runtime, the TUI, the web dashboard, the API, and the session system.
+What's missing: **a framework that defines the agent itself as a first-class, reusable, composable runtime abstraction** — comprehensive enough to model Claude Code, a Discord chatbot, a monitoring daemon, and a Neuro-sama-style streamer as different configurations of the same underlying system.
 
-The abstraction isn't limited to coding agents. Frontier coding tools like Claude Code, Codex CLI, and OpenCode fit naturally inside the creature model, but so do trigger-driven monitoring agents, research terrariums, and Neuro-sama-style real-time agents. The goal is to be universal at the agent layer; domain-specific concerns like latency or UI are handled by specialized runtimes on top.
+## What KohakuTerrarium Is
+
+KohakuTerrarium is a **universal agent-level abstraction framework**. It defines what an agent is as a runtime unit (a **creature**), provides five composable module types to build any kind of agent, and includes a wiring layer (a **terrarium**) for horizontal multi-agent composition.
+
+The key claim: **the creature abstraction is comprehensive enough to model virtually any existing agent product**.
+
+A creature is a complete agent runtime with:
+
+- **Controller** — the LLM reasoning loop (any model, any provider, any tool-call format)
+- **Input** — how events enter the agent (CLI, TUI, voice/ASR, webhooks, Discord, API — swappable)
+- **Output** — how the agent delivers results (stdout, TTS, Discord, file, API — swappable)
+- **Tools** — what the agent can do (file ops, shell, web, APIs, databases — pluggable)
+- **Triggers** — what wakes the agent up (user input, timers, channel messages, schedules — composable)
+- **Sub-agents** — internal delegation (explore, plan, implement, review — nested, parallel)
+
+Every module is **independently customizable**. Swap any piece without touching the rest. A **plugin system** intercepts how modules communicate — inject RAG context before LLM calls, enforce safety policies on tool execution, track costs — without replacing any module.
+
+This is how the same framework models different agent products:
+
+| Agent Product | KohakuTerrarium Configuration |
+|--------------|-------------------------------|
+| **Claude Code / Codex** | CLIInput + StdoutOutput + [bash, read, write, edit, grep, glob] + sub-agents(explore, plan, worker) |
+| **Neuro-sama (VTuber)** | ASRInput + TTSOutput + TimerTrigger + [think, scratchpad] + interactive sub-agents |
+| **Monitoring bot** | NoneInput + WebhookOutput + SchedulerTrigger + [bash, http] |
+| **Discord chatbot** | DiscordInput + DiscordOutput + [web_search, web_fetch, think] |
+| **Research assistant** | CLIInput + FileOutput + [web_search, web_fetch, read, write] + sub-agents(explore, research) |
+
+Same framework. Different configs. Each is a standalone creature that also works unchanged inside a multi-agent terrarium.
 
 ## Why KohakuTerrarium Is Different
 
 <table>
   <tr>
     <td valign="top" width="50%">
-      <strong>Inside a creature</strong><br>
-      Vertical coordination<br>
-      One controller delegates to tools and sub-agents.
+      <strong>Inside a creature (vertical)</strong><br>
+      One controller delegates to tools and sub-agents.<br>
+      This is the <em>agent-level abstraction</em> — what an agent IS.
     </td>
     <td valign="top" width="50%">
-      <strong>Between creatures</strong><br>
-      Horizontal coordination<br>
-      Independent creatures communicate explicitly through channels.
+      <strong>Between creatures (horizontal)</strong><br>
+      Independent creatures communicate through channels.<br>
+      This is the <em>multi-agent wiring</em> — a pure composition layer.
     </td>
   </tr>
 </table>
 
-This gives you a cleaner split than systems that mix agent internals, orchestration, and product behavior into one layer:
+These two levels stay separate by design. A creature never knows it's in a terrarium. A terrarium never inspects creature internals.
 
-- **Reusable creatures**: build an agent once, run it solo or in teams
-- **Real agent boundary**: a creature is a full runtime unit, not just a workflow node or a chat participant
-- **Opaque team members**: terrariums do not inspect creature internals
-- **Explicit communication**: creatures collaborate via named channels, not hidden routing magic
-- **Persistent by default**: sessions save rich runtime state, not just chat history
-- **One runtime, many surfaces**: CLI, TUI, HTTP API, and web UI sit on the same underlying system
-- **Shareable configs**: package and install creature / terrarium configs from Git or local sources
+- **First-class agent abstraction**: a creature is a full runtime unit with its own controller, memory, tools, and I/O — not a workflow node, not a chat participant, not a thin LLM wrapper
+- **Universal**: the same five module types model coding agents, chatbots, monitoring daemons, and real-time streaming agents
+- **Comprehensively customizable**: every module is swappable, plugins intercept the flows between modules, and the whole thing is config-driven
+- **Reusable**: build an agent once, run it solo or in teams — same config, same behavior
+- **Persistent by default**: sessions save rich runtime state (conversations, tool metadata, sub-agent state, triggers), not just chat history
+- **One runtime, many surfaces**: CLI, TUI, HTTP API, web dashboard, and native desktop app sit on the same underlying system
+- **Shareable**: package and install creature / terrarium configs from Git or local sources
 
 ## Key Capabilities
 
