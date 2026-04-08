@@ -142,20 +142,12 @@ class AgentHandlersMixin(AgentToolsMixin):
     async def _process_event_with_controller(
         self, event: TriggerEvent, controller: Controller
     ) -> None:
-        """Process a single event through the specified controller.
-
-        The controller loop runs as a cancellable task. interrupt() cancels
-        it directly, which propagates CancelledError through whatever is
-        awaiting (LLM stream, tool gather, etc.) for immediate stop.
-        """
+        """Process event through controller. Cancellable via interrupt()."""
         self._prepare_processing_cycle(event, controller)
         await controller.push_event(event)
         await self.output_router.on_processing_start()
 
         all_round_text: list[str] = []
-
-        # Run the loop as a separate task so interrupt() can cancel it
-        # immediately, regardless of what it's awaiting
         loop_task = asyncio.create_task(
             self._run_controller_loop(controller, all_round_text)
         )
@@ -201,11 +193,7 @@ class AgentHandlersMixin(AgentToolsMixin):
     async def _run_controller_loop(
         self, controller: Controller, all_round_text: list[str]
     ) -> None:
-        """Inner loop: run LLM, dispatch tools, collect feedback, repeat.
-
-        Exits when there is no more feedback to push (no direct tool
-        results and no output confirmations).
-        """
+        """Inner loop: run LLM → dispatch tools → collect feedback → repeat."""
         while True:
             if self._interrupt_requested:
                 self._interrupt_requested = False
@@ -476,12 +464,13 @@ class AgentHandlersMixin(AgentToolsMixin):
 
         # Wait for handles (direct tools + sub-agents)
         native_results_added = False
+        had_promotions = False
         if handles and self._interrupt_requested:
             self._cancel_handles(handles)
             return False
         if handles:
             logger.info("Waiting for %d direct task(s)", len(handles))
-            results = await self._wait_handles(
+            results, had_promotions = await self._wait_handles(
                 handles, handle_order, controller, native_tool_call_ids, native_mode
             )
             if results:
@@ -495,6 +484,19 @@ class AgentHandlersMixin(AgentToolsMixin):
                     if text:
                         feedback_parts.append(text)
 
+        # If promotions happened, the controller must continue so the model
+        # sees the placeholder and can proceed working on other tasks.
+        if had_promotions:
+            if native_mode:
+                # Placeholder already added to conversation as role="tool"
+                native_results_added = True
+            else:
+                # Text mode: add feedback text about promoted tasks
+                feedback_parts.append(
+                    "[Tasks promoted to background — results arrive later. "
+                    "Continue with other work.]"
+                )
+
         # No feedback means we're done
         if not feedback_parts and not native_results_added:
             logger.debug("No feedback, exiting process loop")
@@ -502,7 +504,7 @@ class AgentHandlersMixin(AgentToolsMixin):
 
         # Push feedback to controller for next turn
         if native_results_added and not feedback_parts:
-            logger.debug("Native tool results in conversation, continuing")
+            logger.debug("Results/promotions in conversation, continuing")
             await controller.push_event(TriggerEvent(type="tool_complete", content=""))
         elif feedback_parts:
             combined = "\n\n".join(feedback_parts)

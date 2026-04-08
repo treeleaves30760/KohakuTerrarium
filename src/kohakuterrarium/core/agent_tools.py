@@ -88,17 +88,19 @@ class AgentToolsMixin:
         controller: Controller,
         tool_call_ids: dict[str, str],
         native_mode: bool,
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any], bool]:
         """Wait for all handles, processing promotions as they occur.
 
-        Returns dict of job_id → result for tasks that completed as direct.
-        Promoted tasks get a placeholder and their results arrive later
-        via ``_on_backgroundify_complete``.
+        Returns:
+            (results, had_promotions) — results maps job_id → result for
+            tasks that completed as direct.  had_promotions is True if
+            any task was promoted (placeholder already added to conversation).
         """
         if not handles:
-            return {}
+            return {}, False
 
         results: dict[str, Any] = {}
+        had_promotions = False
         pending = dict(handles)
 
         while pending:
@@ -120,18 +122,17 @@ class AgentToolsMixin:
 
                 if isinstance(result, PromotionResult):
                     self._handle_promotion(jid, controller, tool_call_ids, native_mode)
-                    # Remove from active handles (now background)
                     self._active_handles.pop(jid, None)
+                    had_promotions = True
                 else:
                     results[jid] = result
                     self._active_handles.pop(jid, None)
 
-            # Cancel futures that didn't complete (re-created next loop)
             for f in futures:
                 if f not in done:
                     f.cancel()
 
-        return results
+        return results, had_promotions
 
     def _handle_promotion(
         self,
