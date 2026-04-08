@@ -98,6 +98,7 @@ async def toggle_plugin(agent_id: str, plugin_name: str, manager=Depends(get_man
         return {"name": plugin_name, "enabled": False}
     else:
         mgr.enable(plugin_name)
+        await mgr.load_pending()
         return {"name": plugin_name, "enabled": True}
 
 

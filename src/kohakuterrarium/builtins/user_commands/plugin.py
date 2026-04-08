@@ -37,6 +37,7 @@ class PluginCommand(BaseUserCommand):
                 mgr.disable(name)
                 return UserCommandResult(output=f"Plugin '{name}' disabled.")
             elif mgr.enable(name):
+                await mgr.load_pending()
                 return UserCommandResult(output=f"Plugin '{name}' enabled.")
             else:
                 return UserCommandResult(error=f"Plugin not found: {name}")
@@ -45,6 +46,7 @@ class PluginCommand(BaseUserCommand):
         if subcmd == "enable" and len(parts) > 1:
             name = parts[1].strip()
             if mgr.enable(name):
+                await mgr.load_pending()
                 return UserCommandResult(output=f"Plugin '{name}' enabled.")
             return UserCommandResult(error=f"Plugin not found: {name}")
 
