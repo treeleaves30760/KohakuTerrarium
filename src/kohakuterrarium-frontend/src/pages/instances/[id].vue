@@ -32,23 +32,10 @@
       </el-tooltip>
     </div>
 
-    <!-- Main content: Chat + StatusDashboard side by side -->
+    <!-- Zoned body via WorkspaceShell + legacy-instance preset. Visual
+         output matches the old nested-SplitPane layout pixel-for-pixel. -->
     <div class="flex-1 overflow-hidden">
-      <SplitPane
-        :initial-size="65"
-        :min-size="30"
-        persist-key="main"
-      >
-        <template #first>
-          <ChatPanel :instance="instance" />
-        </template>
-        <template #second>
-          <StatusDashboard
-            :instance="instance"
-            :on-open-tab="handleOpenTab"
-          />
-        </template>
-      </SplitPane>
+      <WorkspaceShell :instance-id="route.params.id" />
     </div>
 
     <!-- Stop confirmation dialog -->
@@ -76,23 +63,37 @@
 </template>
 
 <script setup>
+import { computed, onMounted, provide, ref, watch } from "vue";
+
 import StatusDot from "@/components/common/StatusDot.vue";
-import SplitPane from "@/components/common/SplitPane.vue";
-import ChatPanel from "@/components/chat/ChatPanel.vue";
-import StatusDashboard from "@/components/status/StatusDashboard.vue";
-import { useInstancesStore } from "@/stores/instances";
+import WorkspaceShell from "@/components/layout/WorkspaceShell.vue";
 import { useChatStore } from "@/stores/chat";
+import { useInstancesStore } from "@/stores/instances";
+import { useLayoutStore } from "@/stores/layout";
 
 const route = useRoute();
 const router = useRouter();
 const instances = useInstancesStore();
 const chat = useChatStore();
+const layout = useLayoutStore();
 
 const instance = computed(() => instances.current);
 const showStopConfirm = ref(false);
 const stopping = ref(false);
 
+// Runtime prop map for panels mounted inside the shell's zones.
+// Keys are panel ids (matching layoutPanels.js registrations).
+const panelProps = computed(() => ({
+  chat: { instance: instance.value },
+  "status-dashboard": {
+    instance: instance.value,
+    onOpenTab: handleOpenTab,
+  },
+}));
+provide("panelProps", panelProps);
+
 onMounted(() => {
+  layout.switchPreset("legacy-instance");
   loadInstance();
 });
 

@@ -43,90 +43,48 @@
       </button>
     </div>
 
-    <!-- Main layout -->
+    <!-- Zoned body via WorkspaceShell + legacy-editor preset.
+         Visual output matches the old tree | monaco | (chat/status) layout. -->
     <div class="flex-1 overflow-hidden">
-      <SplitPane
-        :initial-size="20"
-        :min-size="12"
-        persist-key="editor-tree"
-      >
-        <template #first>
-          <FileTree
-            ref="fileTreeRef"
-            :root="treeRoot"
-            @select="onFileSelect"
-          />
-        </template>
-        <template #second>
-          <SplitPane
-            :initial-size="60"
-            :min-size="30"
-            persist-key="editor-main"
-          >
-            <template #first>
-              <div class="h-full flex flex-col">
-                <MonacoEditor
-                  v-if="editor.activeFile"
-                  :file-path="editor.activeFilePath"
-                  :content="editor.activeFile.content"
-                  :language="editor.activeFile.language"
-                  @change="onEditorChange"
-                  @save="onEditorSave"
-                />
-                <div
-                  v-else
-                  class="h-full flex items-center justify-center text-warm-400 text-sm"
-                >
-                  <div class="text-center">
-                    <div class="i-carbon-document text-3xl mb-2 mx-auto opacity-30" />
-                    <p>Select a file to edit</p>
-                  </div>
-                </div>
-              </div>
-            </template>
-            <template #second>
-              <SplitPane
-                horizontal
-                :initial-size="70"
-                :min-size="20"
-                persist-key="editor-right"
-              >
-                <template #first>
-                  <ChatPanel :instance="instance" />
-                </template>
-                <template #second>
-                  <EditorStatus :instance="instance" />
-                </template>
-              </SplitPane>
-            </template>
-          </SplitPane>
-        </template>
-      </SplitPane>
+      <WorkspaceShell :instance-id="route.params.id" />
     </div>
   </div>
 </template>
 
 <script setup>
+import { computed, onMounted, provide, watch } from "vue";
+
 import StatusDot from "@/components/common/StatusDot.vue";
-import SplitPane from "@/components/common/SplitPane.vue";
-import ChatPanel from "@/components/chat/ChatPanel.vue";
-import FileTree from "@/components/editor/FileTree.vue";
-import MonacoEditor from "@/components/editor/MonacoEditor.vue";
-import EditorStatus from "@/components/editor/EditorStatus.vue";
-import { useInstancesStore } from "@/stores/instances";
+import WorkspaceShell from "@/components/layout/WorkspaceShell.vue";
 import { useChatStore } from "@/stores/chat";
 import { useEditorStore } from "@/stores/editor";
+import { useInstancesStore } from "@/stores/instances";
+import { useLayoutStore } from "@/stores/layout";
 
 const route = useRoute();
 const instances = useInstancesStore();
 const chat = useChatStore();
 const editor = useEditorStore();
+const layout = useLayoutStore();
 
-const fileTreeRef = ref(null);
 const instance = computed(() => instances.current);
 const treeRoot = computed(() => instance.value?.pwd || "");
 
+// Runtime props for panels in the editor layout. Most components read
+// shared state via pinia — the props here are only what they actually
+// take on their template surface.
+const panelProps = computed(() => ({
+  "file-tree": {
+    root: treeRoot.value,
+    onSelect: onFileSelect,
+  },
+  chat: { instance: instance.value },
+  "editor-status": { instance: instance.value },
+}));
+provide("panelProps", panelProps);
+
 onMounted(() => {
+  layout.switchPreset("legacy-editor");
   loadInstance();
 });
 
@@ -149,19 +107,9 @@ function onFileSelect(path) {
   editor.openFile(path);
 }
 
-function onEditorChange(content) {
-  if (editor.activeFilePath) {
-    editor.updateContent(editor.activeFilePath, content);
-  }
-}
-
-function onEditorSave() {
-  if (editor.activeFilePath) {
-    editor.saveFile(editor.activeFilePath);
-  }
-}
-
-// Watch for tool_done events that involve file writes -> refresh tree + reload file
+// Refresh tree + reload active file when tool_done events indicate a
+// write. FileTree polls every 3s on its own, so this just makes the
+// refresh feel instant after a tool call.
 watch(
   () => chat.currentMessages,
   (msgs) => {
@@ -169,9 +117,11 @@ watch(
     const last = msgs[msgs.length - 1];
     if (!last.tool_calls) return;
     for (const tc of last.tool_calls) {
-      if (tc.status === "done" && (tc.name === "write" || tc.name === "edit" || tc.name === "bash")) {
-        fileTreeRef.value?.refresh();
-        // Reload the active file if it might have been modified
+      if (
+        tc.status === "done" &&
+        (tc.name === "write" || tc.name === "edit" || tc.name === "bash")
+      ) {
+        editor.refreshTree();
         if (editor.activeFilePath) {
           editor.revertFile(editor.activeFilePath);
         }

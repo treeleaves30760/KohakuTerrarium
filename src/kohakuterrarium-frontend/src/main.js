@@ -20,4 +20,12 @@ const app = createApp(App);
 
 app.use(pinia);
 app.use(router);
+
+// Register the canonical panel definitions in the layout store. This must
+// run after `app.use(pinia)` so `useLayoutStore()` can acquire the active
+// pinia instance.
+import("@/stores/layoutPanels").then(({ registerBuiltinPanels }) => {
+  registerBuiltinPanels();
+});
+
 app.mount("#app");
