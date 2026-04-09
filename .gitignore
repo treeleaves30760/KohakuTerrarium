@@ -9,6 +9,7 @@ novel_out.txt
 .claude/
 .kohaku/
 .internal/
+.briefcase/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
