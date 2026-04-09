@@ -1,8 +1,9 @@
 <template>
-  <div class="md-content" v-html="rendered" />
+  <div ref="rootEl" class="md-content" v-html="rendered" @click="onClick" />
 </template>
 
 <script setup>
+import { computed, nextTick, ref, watch } from "vue";
 import MarkdownIt from "markdown-it";
 import mk from "markdown-it-katex";
 import hljs from "highlight.js";
@@ -11,23 +12,64 @@ const props = defineProps({
   content: { type: String, default: "" },
 });
 
+const rootEl = ref(null);
+
 const md = new MarkdownIt({
   html: false,
   linkify: true,
   typographer: false,
   highlight(str, lang) {
-    if (lang && hljs.getLanguage(lang)) {
+    const displayLang = lang || "text";
+    const langClass = lang && hljs.getLanguage(lang) ? lang : "";
+    let highlighted;
+    if (langClass) {
       try {
-        return `<pre class="hljs"><code>${hljs.highlight(str, { language: lang }).value}</code></pre>`;
+        highlighted = hljs.highlight(str, { language: lang }).value;
       } catch {
-        // fallthrough
+        highlighted = md.utils.escapeHtml(str);
       }
+    } else {
+      highlighted = md.utils.escapeHtml(str);
     }
-    return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`;
+    // Wrap with header (language label + copy button)
+    return (
+      `<div class="code-block">` +
+      `<div class="code-header">` +
+      `<span class="code-lang">${displayLang}</span>` +
+      `<button class="code-copy-btn" data-copy="${md.utils.escapeHtml(str).replace(/"/g, "&quot;")}" title="Copy">Copy</button>` +
+      `</div>` +
+      `<pre class="hljs"><code>${highlighted}</code></pre>` +
+      `</div>`
+    );
   },
 });
 
 md.use(mk);
+
+function onClick(e) {
+  const btn = e.target.closest(".code-copy-btn");
+  if (!btn) return;
+  const raw = btn.getAttribute("data-copy") || "";
+  // Decode HTML entities
+  const decoded = new DOMParser().parseFromString(raw, "text/html").body
+    .textContent;
+  navigator.clipboard.writeText(decoded || "").then(() => {
+    const orig = btn.textContent;
+    btn.textContent = "Copied!";
+    btn.classList.add("copied");
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.classList.remove("copied");
+    }, 1500);
+  });
+}
+
+watch(
+  () => props.content,
+  async () => {
+    await nextTick();
+  },
+);
 
 /**
  * Pre-process content to normalize LaTeX delimiters:
@@ -114,7 +156,69 @@ const rendered = computed(() => {
 html.dark .md-content code {
   background: rgba(255, 255, 255, 0.08);
 }
-.md-content pre.hljs {
+.md-content .code-block {
+  margin: 0.6em 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a2e;
+}
+html.dark .md-content .code-block {
+  background: #0d0d1a;
+}
+.md-content .code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35em 0.8em;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.75em;
+  color: #a0a0b8;
+  font-family: var(--font-mono);
+}
+.md-content .code-lang {
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+.md-content .code-copy-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #c0c0d0;
+  padding: 0.15em 0.6em;
+  border-radius: 4px;
+  font-size: 0.85em;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.md-content .code-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.md-content .code-copy-btn.copied {
+  background: rgba(74, 222, 128, 0.15);
+  border-color: rgba(74, 222, 128, 0.4);
+  color: #4ade80;
+}
+.md-content .code-block pre.hljs {
+  background: transparent;
+  color: #e0def4;
+  padding: 0.8em 1em;
+  overflow-x: auto;
+  margin: 0;
+  font-size: 0.85em;
+  border-radius: 0;
+}
+.md-content .code-block pre.hljs code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+}
+/* Legacy fallback for inline pre.hljs without wrapper */
+.md-content > pre.hljs {
   background: #1a1a2e;
   color: #e0def4;
   padding: 0.8em 1em;
@@ -123,13 +227,7 @@ html.dark .md-content code {
   margin: 0.5em 0;
   font-size: 0.85em;
 }
-.md-content pre.hljs code {
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  color: inherit;
-}
-html.dark .md-content pre.hljs {
+html.dark .md-content > pre.hljs {
   background: #0d0d1a;
 }
 .md-content blockquote {

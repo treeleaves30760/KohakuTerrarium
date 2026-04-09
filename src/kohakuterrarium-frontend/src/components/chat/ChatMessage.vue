@@ -64,15 +64,28 @@
   <!-- Processing error -->
   <div
     v-else-if="message.role === 'error'"
-    class="rounded-lg bg-coral/8 dark:bg-coral/12 border border-coral/25 dark:border-coral/30 px-4 py-3"
+    class="rounded-lg bg-coral/8 dark:bg-coral/12 border border-coral/25 dark:border-coral/30 overflow-hidden"
   >
-    <div class="flex items-center gap-2 mb-1">
+    <div
+      class="flex items-center gap-2 py-2 px-3 cursor-pointer select-none hover:bg-coral/12 dark:hover:bg-coral/18"
+      @click="errorExpanded = !errorExpanded"
+    >
       <span class="text-coral font-bold text-sm">&#x2717;</span>
-      <span class="text-coral dark:text-coral-light font-semibold text-xs">
+      <span class="text-coral dark:text-coral-light font-semibold text-xs flex-1">
         {{ message.errorType || 'Processing Error' }}
       </span>
+      <span v-if="errorFirstLine" class="text-xs text-coral-shadow dark:text-coral-light/70 font-mono truncate max-w-[60%]">
+        {{ errorFirstLine }}
+      </span>
+      <span
+        class="i-carbon-chevron-down text-coral/60 transition-transform text-[10px]"
+        :class="{ 'rotate-180': errorExpanded }"
+      />
     </div>
-    <div class="text-xs text-coral-shadow dark:text-coral-light/80 font-mono whitespace-pre-wrap">
+    <div
+      v-if="errorExpanded"
+      class="px-3 pb-2 text-xs text-coral-shadow dark:text-coral-light/80 font-mono whitespace-pre-wrap border-t border-coral/20"
+    >
       {{ message.content }}
     </div>
   </div>
@@ -106,7 +119,7 @@
   </div>
 
   <!-- User message -->
-  <div v-else-if="message.role === 'user'" class="ml-auto max-w-[80%]">
+  <div v-else-if="message.role === 'user'" class="ml-auto max-w-[80%] group relative">
     <div
       class="card px-4 py-3 border-l-3"
       :class="message.queued
@@ -120,14 +133,41 @@
           class="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber/15 text-amber leading-none"
         >Queued</span>
       </div>
-      <div class="text-body whitespace-pre-wrap">{{ message.content }}</div>
+      <!-- Edit mode -->
+      <div v-if="editing" class="flex flex-col gap-2">
+        <textarea
+          v-model="editText"
+          class="w-full bg-transparent border border-warm-300 dark:border-warm-600 rounded px-2 py-1 text-body resize-none"
+          :rows="Math.max(2, editText.split('\n').length)"
+          @keydown.meta.enter="confirmEdit"
+          @keydown.ctrl.enter="confirmEdit"
+          @keydown.esc="cancelEdit"
+        />
+        <div class="flex gap-2 justify-end text-xs">
+          <button class="px-2 py-0.5 rounded hover:bg-warm-100 dark:hover:bg-warm-800" @click="cancelEdit">Cancel</button>
+          <button class="px-2 py-0.5 rounded bg-sapphire text-white hover:bg-sapphire-dark" @click="confirmEdit">Save & Rerun</button>
+        </div>
+      </div>
+      <div v-else class="text-body whitespace-pre-wrap">{{ message.content }}</div>
+    </div>
+    <!-- Hover actions for user messages -->
+    <div
+      v-if="!editing && !message.queued && messageIdx != null"
+      class="absolute -bottom-5 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+    >
+      <button class="msg-action-btn" @click="copyMessage" title="Copy">
+        <span class="i-carbon-copy text-xs" />
+      </button>
+      <button class="msg-action-btn" @click="startEdit" title="Edit & rerun">
+        <span class="i-carbon-edit text-xs" />
+      </button>
     </div>
   </div>
 
   <!-- Assistant message (parts-based: ordered text + tools) -->
   <div
     v-else-if="message.role === 'assistant' && message.parts"
-    class="max-w-[90%]"
+    class="max-w-[90%] group relative"
   >
     <template v-for="(part, pi) in message.parts" :key="pi">
       <!-- Text part -->
@@ -143,6 +183,18 @@
         />
       </div>
     </template>
+    <!-- Hover actions -->
+    <div
+      v-if="isLastAssistant"
+      class="absolute -bottom-5 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+    >
+      <button class="msg-action-btn" @click="copyAssistantText" title="Copy">
+        <span class="i-carbon-copy text-xs" />
+      </button>
+      <button class="msg-action-btn" @click="regenerate" title="Regenerate">
+        <span class="i-carbon-renew text-xs" />
+      </button>
+    </div>
   </div>
 
   <!-- Assistant message (legacy: content + tool_calls) -->
@@ -189,14 +241,27 @@
 import MarkdownRenderer from "@/components/common/MarkdownRenderer.vue";
 import ToolCallBlock from "@/components/chat/ToolCallBlock.vue";
 import { GEM } from "@/utils/colors";
+import { useChatStore } from "@/stores/chat";
 
 const props = defineProps({
   message: { type: Object, required: true },
   prevMessage: { type: Object, default: null },
   isFirst: { type: Boolean, default: false },
+  messageIdx: { type: Number, default: null },
+  isLastAssistant: { type: Boolean, default: false },
 });
 
 const expandedTools = reactive({});
+const editing = ref(false);
+const editText = ref("");
+const errorExpanded = ref(false);
+
+const errorFirstLine = computed(() => {
+  if (props.message.role !== "error") return "";
+  const content = props.message.content || "";
+  const firstLine = content.split("\n")[0] || "";
+  return firstLine.length > 80 ? firstLine.slice(0, 80) + "…" : firstLine;
+});
 
 function toggleTool(id) {
   expandedTools[id] = !expandedTools[id];
@@ -227,4 +292,73 @@ const senderGemColor = computed(() => {
   }
   return senderColorCache[name];
 });
+
+// ── Message actions (copy / edit / regenerate) ──
+
+const chat = useChatStore();
+
+function copyMessage() {
+  const text = props.message.content || "";
+  navigator.clipboard.writeText(text);
+}
+
+function copyAssistantText() {
+  let text = "";
+  if (props.message.parts) {
+    for (const part of props.message.parts) {
+      if (part.type === "text" && part.content) {
+        text += part.content;
+      }
+    }
+  } else if (props.message.content) {
+    text = props.message.content;
+  }
+  navigator.clipboard.writeText(text);
+}
+
+function startEdit() {
+  editText.value = props.message.content || "";
+  editing.value = true;
+}
+
+function cancelEdit() {
+  editing.value = false;
+  editText.value = "";
+}
+
+function confirmEdit() {
+  const newContent = editText.value.trim();
+  if (!newContent) return;
+  chat.editMessage(props.messageIdx, newContent);
+  editing.value = false;
+  editText.value = "";
+}
+
+function regenerate() {
+  chat.regenerateLastResponse();
+}
 </script>
+
+<style scoped>
+.msg-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.msg-action-btn:hover {
+  background: var(--color-card-hover);
+  color: var(--color-text);
+  border-color: var(--color-border-hover);
+}
+</style>

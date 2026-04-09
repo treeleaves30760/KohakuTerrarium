@@ -214,6 +214,27 @@ export const agentAPI = {
     return data;
   },
 
+  /** Regenerate the last assistant response */
+  async regenerate(id) {
+    const { data } = await api.post(`/agents/${id}/regenerate`);
+    return data;
+  },
+
+  /** Edit a user message at a given index and re-run */
+  async editMessage(id, msgIdx, content) {
+    const { data } = await api.post(
+      `/agents/${id}/messages/${msgIdx}/edit`,
+      { content },
+    );
+    return data;
+  },
+
+  /** Rewind conversation to a point (drop messages onward) */
+  async rewindTo(id, msgIdx) {
+    const { data } = await api.post(`/agents/${id}/messages/${msgIdx}/rewind`);
+    return data;
+  },
+
   /** Switch the model for a running agent */
   async switchModel(id, model) {
     const { data } = await api.post(`/agents/${id}/model`, { model });

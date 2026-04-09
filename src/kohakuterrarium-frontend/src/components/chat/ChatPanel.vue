@@ -109,6 +109,11 @@
             :message="msg"
             :prev-message="idx > 0 ? chat.currentMessages[idx - 1] : null"
             :is-first="idx === 0"
+            :message-idx="idx"
+            :is-last-assistant="
+              msg.role === 'assistant' &&
+              idx === chat.currentMessages.length - 1
+            "
           />
           <div
             v-if="chat.processing"

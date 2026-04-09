@@ -924,7 +924,6 @@ export const useChatStore = defineStore("chat", {
     /** Promote a running direct task to background via API. */
     async promoteTask(jobId) {
       if (!this._instanceId || !this._instanceType) return;
-      // Mark locally immediately for responsiveness (button disappears)
       if (this.runningJobs[jobId]) {
         this.runningJobs[jobId].promotable = false;
       }
@@ -941,6 +940,43 @@ export const useChatStore = defineStore("chat", {
         }
       } catch (e) {
         console.warn("Failed to promote task:", e);
+      }
+    },
+
+    /** Regenerate the last assistant response using current settings. */
+    async regenerateLastResponse() {
+      if (!this._instanceId || this._instanceType !== "agent") {
+        console.warn("Regenerate only supported for agent instances currently");
+        return;
+      }
+      try {
+        const { agentAPI } = await import("@/utils/api");
+        await agentAPI.regenerate(this._instanceId);
+      } catch (e) {
+        console.warn("Failed to regenerate:", e);
+      }
+    },
+
+    /** Edit a user message and re-run from that point. */
+    async editMessage(messageIdx, newContent) {
+      if (!this._instanceId || this._instanceType !== "agent") return;
+      if (messageIdx == null) return;
+      try {
+        const { agentAPI } = await import("@/utils/api");
+        await agentAPI.editMessage(this._instanceId, messageIdx, newContent);
+      } catch (e) {
+        console.warn("Failed to edit message:", e);
+      }
+    },
+
+    /** Rewind conversation to a point (drop later messages). */
+    async rewindTo(messageIdx) {
+      if (!this._instanceId || this._instanceType !== "agent") return;
+      try {
+        const { agentAPI } = await import("@/utils/api");
+        await agentAPI.rewindTo(this._instanceId, messageIdx);
+      } catch (e) {
+        console.warn("Failed to rewind:", e);
       }
     },
 
