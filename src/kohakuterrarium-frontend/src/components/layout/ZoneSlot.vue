@@ -5,8 +5,10 @@
       v-if="layout.editMode && panel"
       :panel-id="slotInfo.panelId"
       :zone-id="slotInfo.zoneId"
+      :instance-id="instanceId || ''"
       @replace="onReplace"
       @close="onClose"
+      @pop-out="onPopOut"
     />
 
     <div class="flex-1 min-h-0">
@@ -80,6 +82,22 @@ function onPick(newPanelId) {
 
 function onClose() {
   layout.removeSlot(props.slotInfo.zoneId, props.slotInfo.panelId);
+}
+
+function onPopOut() {
+  if (typeof window === "undefined") return;
+  const inst = props.instanceId || "global";
+  const panelId = props.slotInfo.panelId;
+  const url = `/detached/${encodeURIComponent(inst)}--${encodeURIComponent(panelId)}`;
+  const popup = window.open(
+    url,
+    `kt-${inst}-${panelId}`,
+    "width=720,height=520,menubar=no,toolbar=no",
+  );
+  if (popup) {
+    layout.markDetached(panelId, inst);
+    layout.removeSlot(props.slotInfo.zoneId, panelId);
+  }
 }
 
 const panel = computed(() => layout.getPanel(props.slotInfo.panelId));

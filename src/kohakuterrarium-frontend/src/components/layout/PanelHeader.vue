@@ -37,8 +37,11 @@
           <el-dropdown-item command="close" divided>
             <div class="i-carbon-close mr-1" /> Close
           </el-dropdown-item>
-          <el-dropdown-item command="pop-out" disabled>
-            <div class="i-carbon-launch mr-1" /> Pop out (Phase 11)
+          <el-dropdown-item
+            command="pop-out"
+            :disabled="!panel?.supportsDetach"
+          >
+            <div class="i-carbon-launch mr-1" /> Pop out
           </el-dropdown-item>
         </el-dropdown-menu>
       </template>
@@ -54,9 +57,10 @@ import { useLayoutStore } from "@/stores/layout";
 const props = defineProps({
   panelId: { type: String, required: true },
   zoneId: { type: String, required: true },
+  instanceId: { type: String, default: "" },
 });
 
-const emit = defineEmits(["replace", "close"]);
+const emit = defineEmits(["replace", "close", "pop-out"]);
 
 const layout = useLayoutStore();
 
@@ -94,5 +98,6 @@ const preferredZoneLabel = computed(() => {
 function onCommand(cmd) {
   if (cmd === "replace") emit("replace");
   else if (cmd === "close") emit("close");
+  else if (cmd === "pop-out") emit("pop-out");
 }
 </script>
