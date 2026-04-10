@@ -203,7 +203,6 @@ def test_memory_search_response_shape(tmp_path: Path, monkeypatch):
     fake_session.write_bytes(b"")
     monkeypatch.setattr(sessions_route, "_SESSION_DIR", tmp_path)
 
-    # Stub SessionMemory so we don't need a real DB index.
     class _FakeResult:
         def __init__(self):
             self.content = "hello from memory"
@@ -217,13 +216,39 @@ def test_memory_search_response_shape(tmp_path: Path, monkeypatch):
             self.channel = ""
 
     class _FakeMemory:
-        def __init__(self, path):
-            self.path = path
+        def __init__(self, path, embedder=None, store=None):
+            pass
 
         def search(self, query, mode, k, agent):
             return [_FakeResult()]
 
+        def index_events(self, agent, events):
+            pass
+
+    class _FakeStore:
+        def __init__(self, path):
+            pass
+
+        def load_meta(self):
+            return {"agents": ["creature-a"]}
+
+        def get_events(self, agent):
+            return []
+
+        def close(self, update_status=False):
+            pass
+
+        class state:
+            @staticmethod
+            def get(key):
+                raise KeyError(key)
+
+    # Mock manager to return no live agents.
+    fake_manager = SimpleNamespace(_agents={})
+    monkeypatch.setattr(sessions_route, "get_manager", lambda: fake_manager)
     monkeypatch.setattr(sessions_route, "SessionMemory", _FakeMemory)
+    monkeypatch.setattr(sessions_route, "SessionStore", _FakeStore)
+    monkeypatch.setattr(sessions_route, "create_embedder", lambda cfg: None)
 
     app = FastAPI()
     app.include_router(sessions_route.router, prefix="/api/sessions")

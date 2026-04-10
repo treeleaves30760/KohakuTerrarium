@@ -103,10 +103,11 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, inject, ref, watch } from "vue";
 
 import FileTree from "@/components/editor/FileTree.vue";
-import { useChatStore } from "@/stores/chat";
+import { useFileWatcher } from "@/composables/useFileWatcher";
+import { useInstancesStore } from "@/stores/instances";
 import { useFilesStore } from "@/stores/files";
 
 const props = defineProps({
@@ -114,23 +115,20 @@ const props = defineProps({
   onSelect: { type: Function, default: () => {} },
 });
 
-const chat = useChatStore();
+const instances = useInstancesStore();
 const files = useFilesStore();
 
 const view = ref("tree");
 const treeRef = ref(null);
 
-// Auto-refresh file tree when tool calls complete (file writes).
-watch(
-  () => Object.keys(chat.runningJobs).length,
-  (count, prev) => {
-    if (count < (prev ?? 0)) {
-      // A job finished — refresh tree after a short delay to let
-      // the filesystem settle.
-      setTimeout(() => treeRef.value?.refresh(), 500);
-    }
-  },
-);
+// File watcher — connects to /ws/files/{agentId} for live FS changes.
+const agentId = computed(() => instances.current?.id || null);
+const { revision } = useFileWatcher(agentId);
+
+// Auto-refresh tree when file watcher reports changes.
+watch(revision, () => {
+  treeRef.value?.refresh();
+});
 
 const touchedCount = computed(() => files.touched.length);
 

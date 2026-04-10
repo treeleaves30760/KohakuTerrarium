@@ -22,6 +22,7 @@ from kohakuterrarium.api.ws import (
     agents as ws_agents,
     channels as ws_channels,
     chat as ws_chat,
+    files as ws_files,
     logs as ws_logs,
 )
 
@@ -92,6 +93,7 @@ def create_app(
     app.include_router(ws_channels.router, tags=["ws"])
     app.include_router(ws_agents.router, tags=["ws"])
     app.include_router(ws_chat.router, tags=["ws"])
+    app.include_router(ws_files.router, tags=["ws"])
     app.include_router(ws_logs.router, tags=["ws"])
 
     # Static file serving for built web frontend (SPA)
