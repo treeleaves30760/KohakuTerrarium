@@ -1,5 +1,5 @@
 <template>
-  <div ref="editorEl" class="h-full w-full" />
+  <div ref="editorEl" class="h-full w-full overflow-hidden" />
 </template>
 
 <script setup>
@@ -111,5 +111,26 @@ onUnmounted(() => {
 }
 .vditor-toolbar__item {
   padding: 2px 3px !important;
+}
+/* Prevent content from overflowing the container */
+.vditor-ir pre.vditor-reset,
+.vditor-sv pre.vditor-reset,
+.vditor-wysiwyg pre.vditor-reset {
+  overflow-x: hidden !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+.vditor-ir pre.vditor-reset a,
+.vditor-ir pre.vditor-reset .vditor-ir__marker--link {
+  word-break: break-all !important;
+  max-width: 100% !important;
+  display: inline-block !important;
+}
+.vditor {
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+.vditor-content {
+  overflow-x: hidden !important;
 }
 </style>
