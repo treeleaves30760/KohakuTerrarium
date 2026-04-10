@@ -105,37 +105,5 @@ function typeIcon(t) {
     table: "i-carbon-data-table",
   }[t] || "i-carbon-document";
 }
-
-// When the panel mounts, do one full pass over existing messages to
-// pick up any artifacts that arrived before the panel was visible.
-onMounted(() => {
-  canvas.syncFromChatStore();
-});
-
-// Watch new messages landing in the active tab and scan only the tail.
-// This keeps the work incremental instead of rescanning the whole tab.
-let lastLen = 0;
-const stopWatch = watch(
-  () => {
-    const tab = chat.activeTab;
-    if (!tab) return 0;
-    return chat.messagesByTab?.[tab]?.length || 0;
-  },
-  (len, prev) => {
-    if (len <= (prev ?? 0)) {
-      lastLen = len;
-      return;
-    }
-    const tab = chat.activeTab;
-    const msgs = chat.messagesByTab?.[tab] || [];
-    for (let i = lastLen; i < msgs.length; i++) {
-      canvas.scanMessage(msgs[i]);
-    }
-    lastLen = len;
-  },
-);
-
-onUnmounted(() => {
-  stopWatch();
-});
+// Artifact detection runs globally in App.vue via useArtifactDetector.
 </script>
