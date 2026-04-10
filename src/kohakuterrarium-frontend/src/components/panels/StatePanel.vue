@@ -127,7 +127,11 @@
               No results for "{{ memQuery }}"
             </div>
             <div v-else-if="!memSearched" class="text-warm-400 text-center py-4 text-[11px]">
-              Type a query and press Enter to search
+              <p>Type a query and press Enter to search.</p>
+              <p class="mt-1 text-[9px] opacity-70">
+                Memory search works on indexed sessions. Running sessions
+                may not have indexed events yet.
+              </p>
             </div>
             <div v-else class="flex flex-col gap-1.5">
               <div
@@ -152,49 +156,27 @@
           </div>
         </template>
 
-        <!-- Plan tab — scratchpad-backed checklist -->
-        <template v-else-if="activeTab === 'plan'">
-          <div class="flex flex-col gap-1">
+        <!-- Tool History tab — shows tool calls from chat store -->
+        <template v-else-if="activeTab === 'tools'">
+          <div
+            v-if="toolCalls.length === 0"
+            class="text-warm-400 py-6 text-center text-[11px]"
+          >
+            No tool calls in this session yet.
+          </div>
+          <div v-else class="flex flex-col gap-1">
             <div
-              v-for="(step, idx) in planSteps"
-              :key="step.id"
-              class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-warm-100 dark:hover:bg-warm-800 group"
+              v-for="(tc, i) in toolCalls"
+              :key="i"
+              class="flex items-center gap-2 px-2 py-1 rounded text-[11px] hover:bg-warm-100 dark:hover:bg-warm-800"
             >
-              <input
-                type="checkbox"
-                :checked="step.done"
-                class="shrink-0"
-                @change="toggleStep(idx)"
-              />
               <span
-                class="flex-1 text-[11px] break-words"
-                :class="step.done ? 'line-through text-warm-400' : 'text-warm-700 dark:text-warm-300'"
-              >
-                {{ step.text }}
-              </span>
-              <button
-                class="text-warm-400 hover:text-coral transition-colors opacity-0 group-hover:opacity-100"
-                title="Remove"
-                @click="removeStep(idx)"
-              >
-                <div class="i-carbon-close text-[10px]" />
-              </button>
-            </div>
-            <div class="flex items-center gap-1 mt-2">
-              <input
-                v-model="planNewStep"
-                type="text"
-                placeholder="+ add step"
-                class="flex-1 px-2 py-1 text-[11px] rounded border border-warm-200 dark:border-warm-700 bg-transparent"
-                @keyup.enter="addStep"
+                class="w-1.5 h-1.5 rounded-full shrink-0"
+                :class="tc.status === 'done' ? 'bg-aquamarine' : tc.status === 'error' ? 'bg-coral' : 'bg-amber kohaku-pulse'"
               />
-              <button
-                class="px-2 py-1 rounded bg-iolite/10 text-iolite text-[10px] hover:bg-iolite/20"
-                :disabled="!planNewStep.trim()"
-                @click="addStep"
-              >
-                Add
-              </button>
+              <span class="font-mono text-iolite truncate">{{ tc.name }}</span>
+              <span class="flex-1" />
+              <span class="text-warm-400 text-[9px] font-mono">{{ tc.status }}</span>
             </div>
           </div>
         </template>
@@ -255,8 +237,8 @@ const chat = useChatStore();
 
 const tabs = [
   { id: "scratchpad", label: "Scratchpad", icon: "i-carbon-notebook" },
+  { id: "tools", label: "Tool History", icon: "i-carbon-tools" },
   { id: "memory", label: "Memory", icon: "i-carbon-data-base" },
-  { id: "plan", label: "Plan", icon: "i-carbon-list-checked" },
   { id: "compact", label: "Compaction", icon: "i-carbon-compare" },
 ];
 const activeTab = ref("scratchpad");
@@ -294,52 +276,21 @@ async function deleteKey(key) {
   await scratchpad.patch(agentId.value, { [key]: null });
 }
 
-// ── Plan ──────────────────────────────────────────────────────
-const planNewStep = ref("");
-
-const planSteps = computed(() => {
-  const id = agentId.value;
-  if (!id) return [];
-  const raw = scratchpad.getFor(id)._plan;
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
-  } catch {
-    // fall through
+// ── Tool History ──────────────────────────────────────────────
+const toolCalls = computed(() => {
+  const tab = chat.activeTab;
+  if (!tab) return [];
+  const msgs = chat.messagesByTab?.[tab] || [];
+  const out = [];
+  for (const m of msgs) {
+    if (!m.tool_calls) continue;
+    for (const tc of m.tool_calls) {
+      if (tc?.name) out.push(tc);
+    }
   }
-  return [];
+  // newest first
+  return out.reverse();
 });
-
-async function writePlan(steps) {
-  if (!agentId.value) return;
-  await scratchpad.patch(agentId.value, {
-    _plan: JSON.stringify(steps),
-  });
-}
-
-async function addStep() {
-  const text = planNewStep.value.trim();
-  if (!text) return;
-  const next = [
-    ...planSteps.value,
-    { id: Date.now() + Math.random().toString(36).slice(2, 6), text, done: false },
-  ];
-  planNewStep.value = "";
-  await writePlan(next);
-}
-
-async function toggleStep(idx) {
-  const copy = [...planSteps.value];
-  if (!copy[idx]) return;
-  copy[idx] = { ...copy[idx], done: !copy[idx].done };
-  await writePlan(copy);
-}
-
-async function removeStep(idx) {
-  const copy = planSteps.value.filter((_, i) => i !== idx);
-  await writePlan(copy);
-}
 
 // ── Memory search ─────────────────────────────────────────────
 const memQuery = ref("");

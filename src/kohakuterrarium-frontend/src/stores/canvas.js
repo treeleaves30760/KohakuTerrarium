@@ -15,7 +15,9 @@ import { computed, ref } from "vue";
 import { useChatStore } from "@/stores/chat";
 
 const MIN_LINES_FOR_HEURISTIC = 15;
-const CODE_FENCE = /^```(\w*)\n([\s\S]*?)```$/gm;
+// Match fenced code blocks: opening ```lang\n ... closing ```
+// Uses \n``` on its own line (not $ anchor which is fragile with \r\n).
+const CODE_FENCE = /```(\w*)\n([\s\S]*?)\n```/g;
 // Simple multi-line extractor for fenced blocks or explicit markers.
 
 /**
@@ -75,10 +77,20 @@ export const useCanvasStore = defineStore("canvas", () => {
     return a;
   }
 
-  /** Scan a single assistant message for fenced blocks or markers. */
+  /** Scan a single assistant message for fenced blocks or markers.
+   *  Assistant messages use `parts: [{type, content}]`, not `.content`. */
   function scanMessage(msg) {
-    if (!msg || msg.role !== "assistant" || !msg.content) return;
-    const text = String(msg.content);
+    if (!msg || msg.role !== "assistant") return;
+    // Assemble full text from parts (the chat store's message format).
+    let text = "";
+    if (msg.parts && Array.isArray(msg.parts)) {
+      for (const p of msg.parts) {
+        if (p.type === "text" && p.content) text += p.content;
+      }
+    } else if (msg.content) {
+      text = String(msg.content);
+    }
+    if (!text) return;
 
     // Explicit `##canvas##` / `##artifact##` markers take precedence.
     // Syntax: `##canvas name=foo lang=py##...##canvas##`

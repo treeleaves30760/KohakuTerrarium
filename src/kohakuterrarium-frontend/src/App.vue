@@ -17,6 +17,7 @@
 import CommandPalette from "@/components/chrome/CommandPalette.vue";
 import ToastCenter from "@/components/chrome/ToastCenter.vue";
 import NavRail from "@/components/layout/NavRail.vue";
+import { useArtifactDetector } from "@/composables/useArtifactDetector";
 import { useAutoTriggers } from "@/composables/useAutoTriggers";
 import { useBuiltinCommands } from "@/composables/useBuiltinCommands";
 import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
@@ -36,4 +37,6 @@ useBuiltinCommands();
 // Auto-trigger rules: canvas first-artifact notification, processing
 // error → focus debug preset.
 useAutoTriggers();
+// Scan assistant messages for canvas artifacts regardless of active preset.
+useArtifactDetector();
 </script>

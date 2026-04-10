@@ -84,13 +84,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, watch } from "vue";
+import { computed } from "vue";
 
 import CodeViewer from "@/components/panels/canvas/CodeViewer.vue";
 import HtmlViewer from "@/components/panels/canvas/HtmlViewer.vue";
 import MarkdownViewer from "@/components/panels/canvas/MarkdownViewer.vue";
 import { useCanvasStore } from "@/stores/canvas";
-import { useChatStore } from "@/stores/chat";
 
 const canvas = useCanvasStore();
 const chat = useChatStore();
