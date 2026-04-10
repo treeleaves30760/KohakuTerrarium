@@ -27,7 +27,11 @@ _ACTION_MAP = {1: "added", 2: "modified", 3: "deleted"}
 
 async def _watch_directory(root: str, websocket: WebSocket) -> None:
     """Watch a directory for changes and push events via WebSocket."""
-    from watchfiles import awatch
+    try:
+        from watchfiles import awatch
+    except ImportError:
+        await websocket.send_json({"type": "error", "text": "watchfiles not installed"})
+        return
 
     root_path = Path(root)
     if not root_path.is_dir():
@@ -36,14 +40,14 @@ async def _watch_directory(root: str, websocket: WebSocket) -> None:
         )
         return
 
+    logger.info("File watcher awatch starting", root=root)
     await websocket.send_json({"type": "ready", "root": root})
 
     try:
         async for changes in awatch(
             root,
             recursive=True,
-            step=500,  # check every 500ms
-            rust_timeout=5000,
+            step=1000,
         ):
             batch = []
             for action, path_str in changes:
@@ -92,12 +96,13 @@ async def watch_files(websocket: WebSocket, agent_id: str):
         await websocket.close()
         return
 
+    logger.info("File watcher starting", root=str(root), agent_id=agent_id)
     try:
         await _watch_directory(str(root), websocket)
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        logger.warning("file watch WS error", error=str(e), exc_info=True)
+        logger.error("file watch WS crashed", error=str(e), root=str(root), exc_info=True)
         try:
             await websocket.send_json({"type": "error", "text": str(e)})
             await websocket.close()
