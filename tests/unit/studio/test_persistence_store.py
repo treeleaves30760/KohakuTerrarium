@@ -176,6 +176,37 @@ class TestBuildSessionIndex:
         out = store_mod.get_session_index(max_age=0.0)
         assert out == []
 
+    def test_orders_by_last_active_not_mtime(self, tmp_path, monkeypatch):
+        # Regression for the "sessions appear unsorted" bug: the index
+        # must be ordered by the displayed ``last_active`` field, NOT by
+        # file mtime. We create + stamp the sessions in the order
+        # alice→bob→carol, so alice is the OLDEST on-disk file and carol
+        # the newest (mtime-desc would yield carol, bob, alice). But we
+        # stamp ``last_active`` in the opposite order — alice newest,
+        # carol oldest — so a correct ``last_active`` sort yields
+        # alice, bob, carol. If the index ever reverts to sorting by
+        # mtime, this assertion flips and fails.
+        #
+        # ``last_active`` must be written via a reopen with
+        # ``close(update_status=False)``: the normal ``_make_session``
+        # close path calls ``update_status`` which would clobber it with
+        # ``now``.
+        for name, last_active in (
+            ("alice", "2026-05-01T00:00:00+00:00"),
+            ("bob", "2025-05-01T00:00:00+00:00"),
+            ("carol", "2024-05-01T00:00:00+00:00"),
+        ):
+            path = _make_session(tmp_path, name=name)
+            s = SessionStore(str(path))
+            try:
+                s.meta["last_active"] = last_active
+                s.flush()
+            finally:
+                s.close(update_status=False)
+        monkeypatch.setattr(store_mod, "_SESSION_DIR", tmp_path)
+        out = store_mod.build_session_index()
+        assert [e["name"] for e in out] == ["alice", "bob", "carol"]
+
 
 # ── session_stats ─────────────────────────────────────────────
 

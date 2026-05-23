@@ -11,11 +11,14 @@ import os
 import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from kohakuterrarium.session.store import SessionStore
+from kohakuterrarium.studio.persistence.listing_sort import (
+    parse_iso_ts,
+    sort_session_entries,
+)
 from kohakuterrarium.studio.persistence.viewer.paths import (
     all_session_files,
     all_versions_for_session,
@@ -282,12 +285,11 @@ def build_session_index() -> list[dict]:
     # both files via ``all_versions_for_session``.
     session_files = pick_canonical_per_session(session_dir)
 
-    # Phase 1: sort by max(file, wal, shm) mtime — newest first. This
-    # is the canonical sort key for the index; we never re-sort by
-    # DB-derived ``last_active`` because that would require every
-    # entry's meta to be readable + parseable just to order the list.
-    # Strict O(N) — three stats per session, sidecars existence-
-    # checked first.
+    # Phase 1: sort by max(file, wal, shm) mtime — newest first. This is
+    # a fast, always-available *base* order: it needs no DB open, and it
+    # becomes the stable tiebreaker (and the order of the timestamp-less
+    # tail) for the Phase 3 re-sort below. Strict O(N) — three stats per
+    # session, sidecars existence-checked first.
     sortable = sorted(
         ((p, _max_mtime(p)) for p in session_files),
         key=lambda pair: pair[1],
@@ -296,15 +298,26 @@ def build_session_index() -> list[dict]:
     ordered_paths = [p for p, _ in sortable]
 
     # Phase 2: parallel SQLite opens to extract meta + preview for
-    # display. ``ThreadPoolExecutor.map`` preserves input order, so
-    # the mtime-derived sort survives. SQLite open + a handful of
-    # point queries is I/O-bound, so the GIL doesn't serialise.
+    # display. ``ThreadPoolExecutor.map`` preserves input order, so the
+    # mtime base order survives into ``results``. SQLite open + a handful
+    # of point queries is I/O-bound, so the GIL doesn't serialise.
     if not ordered_paths:
         results = []
     else:
         worker_count = min(_MAX_INDEX_WORKERS, len(ordered_paths))
         with ThreadPoolExecutor(max_workers=worker_count) as pool:
             results = list(pool.map(_read_session_entry, ordered_paths))
+
+    # Phase 3: re-sort by ``last_active`` (desc) — the field the listing
+    # UI actually displays. Phase 2 already read every entry's meta, so
+    # this is one in-memory stable sort with zero extra I/O. File mtime
+    # (Phase 1) and the displayed ``last_active`` diverge whenever a file
+    # is touched by something other than conversation activity — building
+    # a vector index, a v1→v2 migration, or a backup/restore that resets
+    # mtimes — so mtime order alone reads as "unsorted" in the UI. The
+    # mtime base order survives as the stable tiebreaker and orders the
+    # timestamp-less (corrupt / error) tail.
+    results = sort_session_entries(results)
 
     _session_index = results
     _index_built_at = time.time()
@@ -362,14 +375,6 @@ def session_stats() -> dict[str, Any]:
     age_total = 0.0
     age_count = 0
 
-    def _to_ts(s: str) -> float | None:
-        if not s:
-            return None
-        try:
-            return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
-        except ValueError:
-            return None
-
     for entry in sessions:
         if entry.get("error"):
             continue
@@ -381,7 +386,7 @@ def session_stats() -> dict[str, Any]:
             if agent:
                 agents[agent] += 1
 
-        ts = _to_ts(entry.get("last_active") or entry.get("created_at") or "")
+        ts = parse_iso_ts(entry.get("last_active") or entry.get("created_at") or "")
         if ts is not None:
             age = now - ts
             if age >= 0:

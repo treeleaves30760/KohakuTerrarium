@@ -100,6 +100,56 @@ class TestPersistenceSaved:
         r2 = client.get("/saved?search=12345")
         assert r2.json()["total"] == 1
 
+    def test_list_sessions_sort_default_newest_first(self, monkeypatch):
+        # No sort param → last_active desc (newest first), and the
+        # response echoes the applied sort/order.
+        sessions = [
+            {"name": "old", "last_active": "2024-01-01T00:00:00+00:00"},
+            {"name": "new", "last_active": "2026-01-01T00:00:00+00:00"},
+            {"name": "mid", "last_active": "2025-01-01T00:00:00+00:00"},
+        ]
+        monkeypatch.setattr(saved_mod, "get_session_index", lambda: sessions)
+        client = TestClient(_app(saved_mod.router))
+        body = client.get("/saved").json()
+        assert [s["name"] for s in body["sessions"]] == ["new", "mid", "old"]
+        assert body["sort"] == "last_active"
+        assert body["order"] == "desc"
+
+    def test_list_sessions_sort_order_asc(self, monkeypatch):
+        sessions = [
+            {"name": "new", "last_active": "2026-01-01T00:00:00+00:00"},
+            {"name": "old", "last_active": "2024-01-01T00:00:00+00:00"},
+        ]
+        monkeypatch.setattr(saved_mod, "get_session_index", lambda: sessions)
+        client = TestClient(_app(saved_mod.router))
+        body = client.get("/saved?order=asc").json()
+        assert [s["name"] for s in body["sessions"]] == ["old", "new"]
+        assert body["order"] == "asc"
+
+    def test_list_sessions_sort_by_name(self, monkeypatch):
+        sessions = [
+            {"name": "Charlie", "last_active": "2026-01-01T00:00:00+00:00"},
+            {"name": "alpha", "last_active": "2024-01-01T00:00:00+00:00"},
+        ]
+        monkeypatch.setattr(saved_mod, "get_session_index", lambda: sessions)
+        client = TestClient(_app(saved_mod.router))
+        body = client.get("/saved?sort=name&order=asc").json()
+        # Case-insensitive name sort beats the last_active default.
+        assert [s["name"] for s in body["sessions"]] == ["alpha", "Charlie"]
+
+    def test_list_sessions_bad_sort_falls_back(self, monkeypatch):
+        # An unknown sort field must not 500 — it falls back to
+        # last_active desc so the list still comes back newest-first.
+        sessions = [
+            {"name": "old", "last_active": "2024-01-01T00:00:00+00:00"},
+            {"name": "new", "last_active": "2026-01-01T00:00:00+00:00"},
+        ]
+        monkeypatch.setattr(saved_mod, "get_session_index", lambda: sessions)
+        client = TestClient(_app(saved_mod.router))
+        resp = client.get("/saved?sort=injection&order=nonsense")
+        assert resp.status_code == 200
+        assert [s["name"] for s in resp.json()["sessions"]] == ["new", "old"]
+
     def test_list_sessions_refresh(self, monkeypatch):
         called = []
         monkeypatch.setattr(

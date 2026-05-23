@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException
 from kohakuterrarium.api.routes.persistence._executor import (
     run_in_persistence_executor,
 )
+from kohakuterrarium.studio.persistence.listing_sort import sort_session_entries
 from kohakuterrarium.studio.persistence.store import (
     build_session_index,
     delete_session_files,
@@ -95,10 +96,18 @@ async def list_sessions(
     offset: int = 0,
     search: str = "",
     refresh: bool = False,
+    sort: str = "last_active",
+    order: str = "desc",
 ):
-    """List saved sessions with search and pagination.
+    """List saved sessions with search, sort, and pagination.
 
-    The entire fetch + filter + paginate pipeline runs on the
+    Ordering: ``sort`` ∈ {last_active, created_at, name, config_type}
+    (default ``last_active``) and ``order`` ∈ {asc, desc} (default
+    ``desc``). Unknown values fall back to the defaults rather than
+    erroring — the index is already ``last_active``-desc, so an absent or
+    bad sort param still returns newest-first.
+
+    The entire fetch + filter + sort + paginate pipeline runs on the
     dedicated persistence executor so concurrent route work
     (chat-WS handshake, runtime-graph snapshot, identity reads)
     keeps streaming even while a cold-cache index rebuild fans out
@@ -109,9 +118,19 @@ async def list_sessions(
 
     all_sessions = await run_in_persistence_executor(get_session_index)
     filtered = await run_in_persistence_executor(_filter_sessions, all_sessions, search)
-    total = len(filtered)
-    page = filtered[offset : offset + limit]
-    return {"sessions": page, "total": total, "offset": offset, "limit": limit}
+    ordered = await run_in_persistence_executor(
+        sort_session_entries, filtered, sort, order
+    )
+    total = len(ordered)
+    page = ordered[offset : offset + limit]
+    return {
+        "sessions": page,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "sort": sort,
+        "order": order,
+    }
 
 
 @router.delete("/{session_name}")

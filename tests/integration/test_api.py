@@ -1124,6 +1124,19 @@ class TestApiIntegration:
         assert listing["total"] == 1
         saved_name = listing["sessions"][0]["name"]
         assert "alice" in listing["sessions"][0]["agents"]
+        # The list echoes the applied sort contract; default is
+        # last_active desc so the rail comes back newest-first.
+        assert listing["sort"] == "last_active"
+        assert listing["order"] == "desc"
+        # An explicit sort param threads HTTP -> studio -> index and is
+        # echoed back (single-entry list is order-invariant, but the
+        # accepted-param + echo contract is exercised end-to-end).
+        resp = client.get("/api/sessions", params={"sort": "name", "order": "asc"})
+        assert resp.status_code == 200
+        sorted_listing = resp.json()
+        assert sorted_listing["sort"] == "name"
+        assert sorted_listing["order"] == "asc"
+        assert sorted_listing["total"] == 1
 
         # Saved-session aggregates — disk usage + stats both read the
         # same cached index the rail loads.
