@@ -519,8 +519,15 @@ export const sessionAPI = {
 
   // ── saved-session lookups ────────────────────────────────────────
 
-  async list({ limit = 20, offset = 0, search = "", refresh = false } = {}) {
-    const params = { limit, offset }
+  async list({
+    limit = 20,
+    offset = 0,
+    search = "",
+    refresh = false,
+    sort = "last_active",
+    order = "desc",
+  } = {}) {
+    const params = { limit, offset, sort, order }
     if (search) params.search = search
     if (refresh) params.refresh = true
     const { data } = await api.get("/sessions", { params })

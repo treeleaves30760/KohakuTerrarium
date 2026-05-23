@@ -117,6 +117,13 @@ export default {
   "sessions.noSavedHint": "Sitzungen werden automatisch gespeichert, waehrend Instanzen laufen.",
   "sessions.searchPlaceholder":
     "Sitzungen nach Name, Konfiguration, Agenten oder Vorschau durchsuchen...",
+  "sessions.sortBy": "Sortieren nach",
+  "sessions.sortLastActive": "Zuletzt aktiv",
+  "sessions.sortCreated": "Erstellt",
+  "sessions.sortName": "Name",
+  "sessions.sortType": "Typ",
+  "sessions.sortAsc": "Aufsteigend",
+  "sessions.sortDesc": "Absteigend",
   "sessions.noMatch": 'Keine Sitzungen fuer "{query}" gefunden',
   "sessions.agentCount": ({ count }) => `${count} Agent${count === 1 ? "" : "en"}`,
   "sessions.view": "Ansehen",

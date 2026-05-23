@@ -25,8 +25,17 @@
       </div>
 
       <template v-else>
-        <div class="mb-4">
-          <input v-model="searchQuery" type="text" class="input-field w-full" :placeholder="t('sessions.searchPlaceholder')" />
+        <div class="mb-4 flex flex-wrap items-center gap-2">
+          <input v-model="searchQuery" type="text" class="input-field flex-1 min-w-48" :placeholder="t('sessions.searchPlaceholder')" />
+          <el-select v-model="sortField" :aria-label="t('sessions.sortBy')" style="width: 180px" class="shrink-0">
+            <el-option :label="t('sessions.sortLastActive')" value="last_active" />
+            <el-option :label="t('sessions.sortCreated')" value="created_at" />
+            <el-option :label="t('sessions.sortName')" value="name" />
+            <el-option :label="t('sessions.sortType')" value="config_type" />
+          </el-select>
+          <button class="btn-secondary flex items-center gap-1 shrink-0" :title="sortOrder === 'desc' ? t('sessions.sortDesc') : t('sessions.sortAsc')" @click="toggleSortOrder">
+            <span :class="sortOrder === 'desc' ? 'i-carbon-arrow-down' : 'i-carbon-arrow-up'" />
+          </button>
         </div>
 
         <div v-if="sessions.length === 0" class="card p-8 text-center text-secondary">{{ t("sessions.noMatch", { query: searchQuery }) }}</div>
@@ -179,6 +188,11 @@ const error = ref(null)
 const resuming = ref(null)
 const searchQuery = ref("")
 let searchTimer = null
+// Sort is applied server-side (``GET /api/sessions?sort=&order=``). The
+// backend defaults to ``last_active`` desc — the field each row shows —
+// so the list comes back newest-first even before the user touches these.
+const sortField = ref("last_active")
+const sortOrder = ref("desc")
 
 const buildModalOpen = ref(false)
 const buildTarget = ref(null)
@@ -191,6 +205,17 @@ watch(searchQuery, () => {
     fetchSessions()
   }, 300)
 })
+
+// Changing sort field/direction resets to the first page and refetches —
+// the new order applies across the whole result set, not just the page.
+watch([sortField, sortOrder], () => {
+  currentOffset.value = 0
+  fetchSessions()
+})
+
+function toggleSortOrder() {
+  sortOrder.value = sortOrder.value === "desc" ? "asc" : "desc"
+}
 
 const hasMore = computed(() => currentOffset.value + pageSize < totalSessions.value)
 const hasPrev = computed(() => currentOffset.value > 0)
@@ -209,6 +234,8 @@ async function fetchSessions(forceRefresh = false) {
       offset: currentOffset.value,
       search: searchQuery.value.trim(),
       refresh: forceRefresh,
+      sort: sortField.value,
+      order: sortOrder.value,
     })
     sessions.value = result.sessions || []
     totalSessions.value = result.total || 0
