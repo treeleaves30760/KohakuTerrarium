@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci/graph-model-picker]
   pull_request:
     branches: [main]
 
@@ -196,6 +196,8 @@ jobs:
           src/components/panels/modules/ModuleEditForm.test.js
           src/components/settings/SettingsPage.test.js
           src/components/session-v2/phone/PhoneTabs.test.js
+      - name: Run graph model picker regression tests
+        run: npm test -- --maxWorkers=4 CreatureModelPicker ModelSwitcher ComposerModelPicker graph
       - run: npm run build
       - name: Verify frontend build output
         working-directory: .
