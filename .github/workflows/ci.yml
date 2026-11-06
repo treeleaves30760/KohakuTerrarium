@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci/inline-accordion-report]
   pull_request:
     branches: [main]
 
