@@ -195,11 +195,10 @@ host-loop 检查，因此仍需 `compact.auto` 才能自动压缩。两种情况
 
 | Option | 类型 | 预设 | 用途 |
 |--------|------|------|------|
-| `enabled` | bool | true | 总开关。 |
-| `tools` | list[str] / `"all"` | `"all"` | 哪些工具需要批准。`"all"` = 每个工具。 |
-| `whitelist` | list[str] | `[]` | 跳过批准的工具（使用者选「always」时也会被加进 per-session 「always allow」清单）。 |
-| `auto_approve_pattern` | str | "" | regex 模式；符合的工具 args 会自动批准而不询问。 |
-| `prompt_template` | str | 预设 | 自订显示给使用者的批准 prompt。 |
+| `gated_tools` | list[str] | `[]` | 需要批准的工具。空列表 = 每个工具；`"*"` 也匹配每个工具。 |
+| `allowlist` | list[str] | `[]` | 永远不需要批准的工具，即使也列在 `gated_tools` 里。 |
+| `timeout_s` | float | null | 等待使用者的秒数；null = 一直等。超时没有回应就拒绝。 |
+| `surface` | `modal` / `chat` | `modal` | 批准提示出现的位置。 |
 
 ### 行为
 
@@ -220,8 +219,8 @@ output bus 出场，并经由 input loop 回覆。没有使用者介面的无头
 plugins:
   - name: permgate
     options:
-      tools: ["bash", "write", "edit"]
-      whitelist: ["read", "grep", "glob"]
+      gated_tools: ["bash", "write", "edit"]
+      allowlist: ["read", "grep", "glob"]
 ```
 
 ## `browser`
@@ -244,7 +243,7 @@ plugins:
 | `viewport` | `"WxH"` / `[w, h]` | `1280x800` | 页面尺寸，CSS 像素（宽 320–7680，高 200–4320）。 |
 | `profile_dir` | str | null | 持久 profile 目录；null = 每次启动用一次性 profile。 |
 | `allow_hosts` | list[str] | `[]` | 非空时，页面只能访问这些主机。模式：`host`、`*.host`、`host:port`、`[v6]:port`。 |
-| `block_hosts` | list[str] | `[]` | 页面永远不能访问的主机；最先检查。 |
+| `block_hosts` | list[str] | `[]` | 页面永远不能访问的主机；最先检查。这里的 IP 地址也会拦截解析到它的主机名。 |
 | `allow_loopback` | bool | false | 允许回环地址（本地开发服务器）。 |
 | `allow_private` | bool | false | 允许内网、运营商级 NAT 与 IPv6 唯一本地地址。 |
 | `secrets` | dict | `{}` | 密钥名到 `env:VAR_NAME` 引用的映射，供 `type` 动作使用；其值会从结果中遮蔽。 |
@@ -297,7 +296,7 @@ plugins:
       network_allowlist: ["api.example.com"]
   - name: permgate
     options:
-      tools: "all"
+      gated_tools: ["*"]
   - name: budget
     options:
       turn_budget: [40, 60]

@@ -296,11 +296,10 @@ Implementation: `src/kohakuterrarium/builtins/plugins/permgate/plugin.py`.
 
 | Option | Type | Default | Purpose |
 |---|---|---|---|
-| `enabled` | bool | true | Master on / off. |
-| `tools` | list[str] / `"all"` | `"all"` | Which tools require approval. `"all"` = every tool. |
-| `whitelist` | list[str] | `[]` | Tools that bypass approval (added to a per-session "always allow" list when the user picks "always"). |
-| `auto_approve_pattern` | str | "" | Regex pattern; matching tool args auto-approve without prompting. Use sparingly. |
-| `prompt_template` | str | default | Customise the approval prompt shown to the user. |
+| `gated_tools` | list[str] | `[]` | Tools that require approval. Empty list = every tool; `"*"` also matches every tool. |
+| `allowlist` | list[str] | `[]` | Tools that never require approval, even when listed in `gated_tools`. |
+| `timeout_s` | float | null | Seconds to wait for the user; null = wait forever. No answer in time denies the call. |
+| `surface` | `modal` / `chat` | `modal` | Where the approval prompt appears. |
 
 ### Behaviour
 
@@ -322,8 +321,8 @@ should disable permgate or set `auto_approve_pattern: "^.*$"`.
 plugins:
   - name: permgate
     options:
-      tools: ["bash", "write", "edit"]
-      whitelist: ["read", "grep", "glob"]
+      gated_tools: ["bash", "write", "edit"]
+      allowlist: ["read", "grep", "glob"]
 ```
 
 ## `ui.apps`
@@ -414,7 +413,7 @@ the runtime is `src/kohakuterrarium/browser/`.
 | `viewport` | `"WxH"` / `[w, h]` | `1280x800` | Page size in CSS pixels (width 320–7680, height 200–4320). |
 | `profile_dir` | str | null | Persistent profile directory; null = throwaway profile per launch. |
 | `allow_hosts` | list[str] | `[]` | If not empty, the only hosts pages may reach. Patterns: `host`, `*.host`, `host:port`, `[v6]:port`. |
-| `block_hosts` | list[str] | `[]` | Hosts pages may never reach; checked first. |
+| `block_hosts` | list[str] | `[]` | Hosts pages may never reach; checked first. An IP address here also blocks names that resolve to it. |
 | `allow_loopback` | bool | false | Allow loopback addresses (local dev servers). |
 | `allow_private` | bool | false | Allow private, carrier-grade NAT and IPv6 unique-local addresses. |
 | `secrets` | dict | `{}` | Secret names to `env:VAR_NAME` references for `type` actions; values are redacted from results. |
@@ -474,7 +473,7 @@ plugins:
       network_allowlist: ["api.example.com"]
   - name: permgate
     options:
-      tools: "all"
+      gated_tools: ["*"]
   - name: budget
     options:
       turn_budget: [40, 60]
